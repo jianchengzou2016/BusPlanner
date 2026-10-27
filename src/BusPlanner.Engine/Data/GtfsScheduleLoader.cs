@@ -45,7 +45,8 @@ public sealed class GtfsScheduleLoader
             .Select(row => new TransitStop(
                 row.GetRequired("stop_id"),
                 row.GetOptional("stop_name") ?? row.GetRequired("stop_id"),
-                row.GetOptional("parent_station")))
+                row.GetOptional("parent_station"),
+                row.GetOptional("stop_code")))
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
 
         var trips = ReadTable(archive, "trips.txt", required: true)!.EnumerateRows()
@@ -197,4 +198,3 @@ public sealed class GtfsScheduleLoader
         }
     }
 }
-

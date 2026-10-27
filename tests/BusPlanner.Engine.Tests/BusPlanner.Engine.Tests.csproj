@@ -20,4 +20,3 @@
     <ProjectReference Include="..\..\src\BusPlanner.Engine\BusPlanner.Engine.csproj" />
   </ItemGroup>
 </Project>
-

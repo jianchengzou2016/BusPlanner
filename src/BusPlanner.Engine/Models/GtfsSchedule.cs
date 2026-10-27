@@ -4,7 +4,8 @@ namespace BusPlanner.Engine.Models;
 /// <param name="Id">The feed's stop identifier.</param>
 /// <param name="Name">The passenger-facing stop name.</param>
 /// <param name="ParentStationId">The parent station identifier, when this is a platform or child stop.</param>
-public sealed record TransitStop(string Id, string Name, string? ParentStationId);
+/// <param name="StopCode">The passenger-facing stop code, when supplied.</param>
+public sealed record TransitStop(string Id, string Name, string? ParentStationId, string? StopCode = null);
 
 /// <summary>A public transit route described by the schedule feed.</summary>
 /// <param name="Id">The feed's route identifier.</param>
@@ -86,6 +87,8 @@ public sealed class GtfsSchedule
     private readonly Dictionary<string, ServiceCalendar> _calendars;
     private readonly Dictionary<(string ServiceId, DateOnly Date), bool> _exceptions;
     private readonly Dictionary<string, TransitFrequency[]> _frequenciesByTrip;
+    private readonly Dictionary<string, string[]> _stopIdsByCode;
+    private readonly Dictionary<string, string[]> _stopIdsByNormalizedIdentifier;
 
     internal GtfsSchedule(
         TimeZoneInfo agencyTimeZone,
@@ -100,6 +103,19 @@ public sealed class GtfsSchedule
         AgencyTimeZone = agencyTimeZone;
         Stops = stops;
         Routes = routes;
+        _stopIdsByCode = stops.Values
+            .Where(x => !string.IsNullOrWhiteSpace(x.StopCode))
+            .GroupBy(x => x.StopCode!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Select(y => y.Id).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.OrdinalIgnoreCase);
+        _stopIdsByNormalizedIdentifier = stops.Values
+            .SelectMany(stop => new[]
+            {
+                (Value: NormalizeStopCode(stop.Id), StopId: stop.Id),
+                (Value: stop.StopCode is null ? null : NormalizeStopCode(stop.StopCode), StopId: stop.Id)
+            })
+            .Where(x => x.Value is not null)
+            .GroupBy(x => x.Value!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Select(y => y.StopId).Distinct(StringComparer.Ordinal).ToArray(), StringComparer.OrdinalIgnoreCase);
         _tripsById = trips.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
         _stopTimesByTrip = stopTimes
             .GroupBy(x => x.TripId, StringComparer.Ordinal)
@@ -125,6 +141,43 @@ public sealed class GtfsSchedule
 
     /// <summary>Gets the number of trips loaded from the feed.</summary>
     public int TripCount => _tripsById.Count;
+
+    /// <summary>Resolves a GTFS stop identifier or public stop code to the internal stop identifier.</summary>
+    /// <param name="idOrCode">A stop_id or stop_code, including any leading zeroes.</param>
+    /// <returns>The internal stop_id.</returns>
+    /// <exception cref="KeyNotFoundException">No stop matches the supplied identifier or code.</exception>
+    /// <exception cref="InvalidOperationException">The supplied stop code matches more than one stop.</exception>
+    public string ResolveStopId(string idOrCode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idOrCode);
+        var value = idOrCode.Trim();
+        if (Stops.ContainsKey(value))
+        {
+            return value;
+        }
+
+        if (_stopIdsByCode.TryGetValue(value, out var codeMatches))
+        {
+            return ResolveUnique(value, codeMatches, "Public stop code");
+        }
+
+        var normalized = NormalizeStopCode(value);
+        return _stopIdsByNormalizedIdentifier.TryGetValue(normalized, out var normalizedMatches)
+            ? ResolveUnique(value, normalizedMatches, "Stop identifier after leading-zero normalization")
+            : throw new KeyNotFoundException($"Stop '{value}' was not found in the schedule.");
+    }
+
+    private static string ResolveUnique(string value, string[] matches, string matchType) => matches.Length switch
+    {
+        1 => matches[0],
+        _ => throw new InvalidOperationException($"{matchType} '{value}' matches multiple stops.")
+    };
+
+    private static string NormalizeStopCode(string value)
+    {
+        var normalized = value.TrimStart('0');
+        return normalized.Length == 0 ? "0" : normalized;
+    }
 
     internal IReadOnlyList<TransitStopTime> GetStopTimesForTrip(string tripId) =>
         _stopTimesByTrip.TryGetValue(tripId, out var values) ? values : Array.Empty<TransitStopTime>();
@@ -170,4 +223,3 @@ public sealed class GtfsSchedule
         return new DateTimeOffset(local, offset);
     }
 }
-

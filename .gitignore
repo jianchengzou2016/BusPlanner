@@ -6,4 +6,4 @@
 *.suo
 data/
 gtfs*.zip
-
+local.settings.json

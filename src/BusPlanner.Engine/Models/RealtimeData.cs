@@ -67,6 +67,7 @@ public sealed record RealtimeStopUpdate(
 /// <param name="Timestamp">When this trip update was generated, when supplied.</param>
 /// <param name="TripDelaySeconds">Trip-wide delay in seconds, when supplied.</param>
 /// <param name="StopUpdates">Stop-level predictions and statuses for this trip.</param>
+/// <param name="RouteId">The feed's route identifier, when supplied.</param>
 public sealed record RealtimeTripUpdate(
     string TripId,
     DateOnly? StartDate,
@@ -74,7 +75,8 @@ public sealed record RealtimeTripUpdate(
     RealtimeTripStatus Status,
     DateTimeOffset? Timestamp,
     int? TripDelaySeconds,
-    IReadOnlyList<RealtimeStopUpdate> StopUpdates);
+    IReadOnlyList<RealtimeStopUpdate> StopUpdates,
+    string? RouteId = null);
 
 /// <summary>Identifies the route, trip, or stop affected by a service alert.</summary>
 /// <param name="RouteId">Affected route identifier, or <see langword="null"/> when unrestricted.</param>
@@ -125,4 +127,3 @@ public sealed record RealtimeSnapshot(
         return age >= TimeSpan.Zero && age <= maximumAge ? FeedFreshness.Fresh : FeedFreshness.Stale;
     }
 }
-

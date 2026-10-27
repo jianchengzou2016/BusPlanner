@@ -1,6 +1,6 @@
 # BusPlanner — Design Requirements and Milestones
 
-**Status:** Milestone 1 — complete; Milestone 0 requirements substantially agreed  
+**Status:** Milestone 0 — complete; Milestone 1 — complete; Milestone 2 — in progress  
 **Date:** 27 October 2026
 
 ## 1. Product goal
@@ -39,7 +39,7 @@ For each configured journey, the link supplies a default starting stage and rema
 6. Estimate arrival at the destination stop, with the same live-versus-scheduled labelling.
 7. For each of the two first-leg candidates, present the primary and backup onward connections in a compact mobile view, including the selected starting point, remaining approach time, route, stop/platform, departure/arrival times, transfer allowance, source status, and last update time.
 
-Use a configurable transfer allowance for each specific arrival-platform to onward-boarding-platform pair, with four minutes as an initial value for a short change such as the Mater Hill example. A longer platform walk, such as changing to a distant platform at a large station, may need a longer default. Show the allowance within the transfer summary and let the passenger adjust it for the current request through a compact inline edit, rather than a separate always-visible settings control. Keep that override local to the current request; do not save it to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
+Use a configurable transfer allowance for each specific arrival-platform to onward-boarding-platform pair, with four minutes as an initial value for an ordinary short transfer. A longer platform walk, such as changing to a distant platform at a large station, may need a longer default. Show the allowance within the transfer summary and let the passenger adjust it for the current request through a compact inline edit, rather than a separate always-visible settings control. Keep that override local to the current request; do not save it to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
 
 The connection engine should not assume the primary onward bus will operate or remain catchable during busy periods. The backup is the next distinct feasible onward trip after the primary, recalculated from the same first-leg arrival and transfer allowance; if realtime cancellation or skipped-stop data makes a candidate unusable, exclude it and continue to the next eligible service. If no second feasible onward trip exists, show that no backup is currently available. Fresh stop-level arrival/departure predictions are the primary evidence for current conditions. Raw vehicle-position data is not used to derive arrival times in the first release; a vehicle position by itself must not be presented as a precise arrival time.
 
@@ -132,7 +132,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Choose between the integrated Static Web Apps managed API and a separate Flex Consumption API, then cost-check its request grants, execution, storage, and bandwidth exposure.
 - Define the API request limiter and quickest practical disable action. Treat budget alerts as notifications, not as a spending cap.
 
-**Exit condition:** Product behavior and the data contract are documented; the first journey's exact stops remain configuration inputs. Record the hosting choice before deployment; it is not required before starting engine work.
+**Exit condition:** Product behavior and the data contract are documented. The first journey's stop codes, route sequence, defaults, and display label are confirmed in ignored local configuration. Azure hosting is selected for deployment planning; deployment remains Milestone 4.
 
 ### Milestone 1 — Build the C# journey engine
 
@@ -143,7 +143,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 **Exit condition:** The engine returns a structured result for both candidate services, including live/scheduled provenance and a clear no-connection or unavailable-data state.
 
-**Validation completed 27 October 2026:** The Release solution build passes with no warnings or errors, and all 10 journey-engine tests pass. A smoke test loaded Translink's current SEQ schedule (`SEQ_SCH_GTFS.zip`: 17,274 stops, 2,825 routes, 141,441 trips; `Australia/Brisbane`) and parsed the live TripUpdates feed (1,724 trip updates). With a fresh feed snapshot, the planner matched real-time trip IDs to the corresponding current schedule and produced two first-leg 235 options with onward 150 options. Downloaded feed files were temporary and are not in source control. The endpoint and data-format validation draws on Translink's [official open-data page](https://translink.com.au/about-translink/open-data), which publishes these feeds and says authentication is not required.
+**Validation completed 27 October 2026:** The Release solution build passes with no warnings or errors, and all 12 journey-engine tests pass. A smoke test loaded Translink's current SEQ schedule (`SEQ_SCH_GTFS.zip`: 17,274 stops, 2,825 routes, 141,441 trips; `Australia/Brisbane`) and parsed the live TripUpdates feed (1,724 trip updates). With a fresh feed snapshot, the planner matched realtime route/trip identifiers to the corresponding schedule. Downloaded feed files were temporary and are not in source control. The endpoint and data-format validation draws on Translink's [official open-data page](https://translink.com.au/about-translink/open-data), which publishes these feeds and says authentication is not required.
 
 ### Milestone 2 — Deliver one mobile journey page
 
@@ -151,6 +151,8 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Show the next two first-leg options with their onward services and final arrival estimates.
 - Make source freshness, scheduled fallbacks, and no-connection states understandable at a glance.
 - Keep configuration out of public source when it contains personal labels or private deployment settings.
+
+**Implementation in progress:** The .NET 10 isolated Function API and responsive static page are in place. Local ignored settings contain the confirmed first journey and defaults. The current static schedule resolves the provided public stop codes after leading-zero normalization. It does not show an onward trip from the configured transfer boarding stop to the exact configured destination; the page must state that no onward connection is available rather than substituting a different stop.
 
 **Exit condition:** The journey can be followed on a phone-sized browser from first departure through destination, with times and source status represented honestly.
 
@@ -172,11 +174,10 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 ## 7. Remaining decisions and validation
 
-Milestone 0 is substantially agreed. Remaining product inputs can be supplied when the first journey is configured; they do not block the reusable engine:
+Milestone 0 inputs have been supplied for the first journey. Public stop codes are resolved through GTFS `stop_code` or a unique leading-zero-normalized match to the internal `stop_id`. The configured journey uses two legs, a 10-minute approach allowance, and a 4-minute transfer allowance. The private display label and stop configuration are in the ignored local settings file, not tracked source.
 
-- Confirm the actual boarding, interchange-platform, destination stops, and allowed route variants for the first journey.
-- The 27 October 2026 feed smoke test found that the sample stop/route assumptions need a direction/platform check before configuration: current GTFS IDs omit the leading zeroes shown on stop pages; route 235 from Heidelberg stop 15 serves Mater Hill platform 1 (stop 19051), while route 150 toward Honeysuckle Way at Sunflower serves Mater Hill platform 2 (stop 19063) and the direction-specific destination stop 10899. Route 153 was not found between those Mater Hill platforms and that destination in the tested schedule. Confirm the intended boarding/transfer/destination choices when configuring the first journey; these details are not hard-coded in the engine.
-- Set that journey's default approach time and transfer allowance for each platform pair. The passenger can adjust these per request; no values are needed for the reusable engine design.
+- The current static schedule has no onward trip from the configured transfer boarding stop to the exact configured destination. A nearby stop is not substituted automatically, and the page will report that no onward connection is available.
+- The 27 October 2026 schedule inspection confirmed the selected transfer platforms and did not find an additional eligible service on the configured onward path. Stop-specific details remain in local configuration.
 - Decide whether to show a “leave by” time. This is optional presentation detail and can be settled during the first mobile page.
 - Azure hosting choice is settled for the first version: Azure Static Web Apps Free with its integrated managed Function API. The user expects roughly 10 requests per day; revisit if measured usage or cost changes that assumption.
 - Validate the one-minute cache TTL and three-minute source-age policy against the real feed during implementation. These are starting settings, not a Milestone 0 blocker.
@@ -186,4 +187,3 @@ The journey URL approach is agreed at the product level: a short configured quic
 ## 8. Acceptance summary for the first release
 
 The first release is complete when one configured journey opens from a quick link on a mobile browser, lets the passenger change the starting stage and remaining approach time, counts that remaining time down while the journey page is open, and preserves the countdown across automatic and manual refreshes. It excludes trips that depart before the passenger can reach the selected starting stop/platform, shows the next two catchable first-leg options, and for each calculates the primary and next feasible backup onward service in predicted departure order after the transfer allowance. Fresh live bus data drives the result, with scheduled estimates clearly labelled as fallbacks. It estimates final arrival and clearly distinguishes fresh real-time predictions from timetable-only estimates or unavailable data. Repeated page refreshes during the cache interval must reuse the shared feed result, and concurrent cache misses must not fan out into duplicate provider requests. The app must run without sign-in and without storing user profiles, while having documented request and cost safeguards for its public endpoint.
-

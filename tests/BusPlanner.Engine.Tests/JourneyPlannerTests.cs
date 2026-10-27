@@ -105,6 +105,36 @@ public sealed class JourneyPlannerTests
     }
 
     [Fact]
+    public void Plan_MatchesRealtimeByRoutePrefixAndStartTimeWhenTripIdDiffers()
+    {
+        var planner = new JourneyPlanner(LoadSchedule());
+        var realtime = new RealtimeSnapshot(
+            Now,
+            new[]
+            {
+                new RealtimeTripUpdate("different-trip-id", ServiceDate, "14:05:00", RealtimeTripStatus.Scheduled, null, null,
+                    new[] { new RealtimeStopUpdate(2, "X2", new RealtimeStopEvent(Now.AddMinutes(22), null), null, RealtimeStopStatus.Scheduled) },
+                    "235-another-operator-code")
+            },
+            Array.Empty<RealtimeServiceAlert>());
+
+        var result = planner.Plan(CreateRequest(), realtime);
+
+        Assert.Equal("235a", result.FirstLegOptions[0].Trip.TripId);
+        Assert.Equal(Now.AddMinutes(22), result.FirstLegOptions[0].Trip.EstimatedArrival);
+        Assert.Equal(EstimateSource.Realtime, result.FirstLegOptions[0].Trip.ArrivalSource);
+    }
+
+    [Fact]
+    public void Schedule_ResolvesPublicStopCodesThroughGtfsStopCode()
+    {
+        var schedule = LoadSchedule();
+
+        Assert.Equal("S", schedule.ResolveStopId("090001"));
+        Assert.Equal("S", schedule.ResolveStopId("90001"));
+    }
+
+    [Fact]
     public void Plan_ExcludesOnwardTripsThatAreCanceledOrSkipTheBoardingStop()
     {
         var planner = new JourneyPlanner(LoadSchedule());
@@ -189,6 +219,7 @@ public sealed class JourneyPlannerTests
                 Trip = new TripDescriptor
                 {
                     TripId = "235a",
+                    RouteId = "235-example",
                     StartDate = "20261027",
                     ScheduleRelationship = TripDescriptor.Types.ScheduleRelationship.Canceled
                 }
@@ -218,6 +249,7 @@ public sealed class JourneyPlannerTests
         var parsed = new GtfsRealtimeParser().Parse(stream);
 
         Assert.Equal(RealtimeTripStatus.Canceled, Assert.Single(parsed.TripUpdates, x => x.TripId == "235a").Status);
+        Assert.Equal("235-example", Assert.Single(parsed.TripUpdates, x => x.TripId == "235a").RouteId);
         Assert.Equal(RealtimeStopStatus.Skipped, Assert.Single(parsed.TripUpdates.Single(x => x.TripId == "235b").StopUpdates).Status);
         Assert.Equal(Now, parsed.FeedTimestamp);
     }
@@ -239,7 +271,7 @@ public sealed class JourneyPlannerTests
         {
             Add("agency.txt", "agency_id,agency_name,agency_url,agency_timezone\nA,Transit,https://example.invalid,Australia/Brisbane\n");
             Add("routes.txt", "route_id,agency_id,route_short_name,route_long_name,route_type\nR235,A,235,Route 235,3\nR150,A,150,Route 150,3\n");
-            Add("stops.txt", "stop_id,stop_name\nS,School\nX2,Interchange platform 2\nX1,Interchange platform 1\nH,Home\n");
+            Add("stops.txt", "stop_id,stop_code,stop_name\nS,090001,School\nX2,090063,Interchange platform 2\nX1,090051,Interchange platform 1\nH,090695,Home\n");
             Add("trips.txt", "route_id,service_id,trip_id,trip_headsign,direction_id\nR235,WK,235a,Interchange,0\nR235,WK,235b,Interchange,0\nR235,WK,235c,Interchange,0\nR235,WK,235overnight,Interchange,0\nR150,WK,150a,Home,1\nR150,WK,150b,Home,1\nR150,WK,150c,Home,1\nR150,WK,150d,Home,1\nR150,WK,150e,Home,1\n");
             Add("stop_times.txt", "trip_id,arrival_time,departure_time,stop_id,stop_sequence,timepoint\n" +
                 "235a,14:05:00,14:05:00,S,1,1\n235a,14:20:00,14:20:00,X2,2,1\n" +
@@ -270,4 +302,3 @@ public sealed class JourneyPlannerTests
 
     }
 }
-

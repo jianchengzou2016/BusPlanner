@@ -12,4 +12,3 @@
     <Protobuf Include="Protos\gtfs-realtime.proto" GrpcServices="None" />
   </ItemGroup>
 </Project>
-

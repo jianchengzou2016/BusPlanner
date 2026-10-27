@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusPlanner.Engine", "src\Bu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusPlanner.Engine.Tests", "tests\BusPlanner.Engine.Tests\BusPlanner.Engine.Tests.csproj", "{5478806D-2B2D-4C80-8A78-4B1B46E905F3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusPlanner.Api", "src\BusPlanner.Api\BusPlanner.Api.csproj", "{67FD3E4A-92BD-4773-A00C-A477104FE1C8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,9 @@ Global
 		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67FD3E4A-92BD-4773-A00C-A477104FE1C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67FD3E4A-92BD-4773-A00C-A477104FE1C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67FD3E4A-92BD-4773-A00C-A477104FE1C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67FD3E4A-92BD-4773-A00C-A477104FE1C8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
-

@@ -106,4 +106,3 @@ public sealed record JourneyPlanResult(
     DateTimeOffset? FeedTimestamp,
     IReadOnlyList<JourneyBranch> FirstLegOptions,
     IReadOnlyList<string> Notices);
-

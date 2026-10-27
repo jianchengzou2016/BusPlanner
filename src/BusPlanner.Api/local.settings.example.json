@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "BusPlanner__Journey__Label": "Configured journey",
+    "BusPlanner__Journey__OriginStopCode": "",
+    "BusPlanner__Journey__InterchangeArrivalStopCode": "",
+    "BusPlanner__Journey__InterchangeBoardingStopCode": "",
+    "BusPlanner__Journey__DestinationStopCode": "",
+    "BusPlanner__Journey__FirstRouteShortName": "",
+    "BusPlanner__Journey__OnwardRouteShortName": "",
+    "BusPlanner__Journey__DefaultApproachMinutes": "10",
+    "BusPlanner__Journey__DefaultTransferMinutes": "4"
+  }
+}

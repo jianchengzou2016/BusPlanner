@@ -230,4 +230,3 @@ internal sealed class CsvRow(string entry, int line, string[] headers, string[] 
     public GtfsLoadException Error(string message, Exception? inner = null) =>
         new($"GTFS entry '{entry}', row {line}: {message}{(inner is null ? string.Empty : $" ({inner.Message})")}");
 }
-

@@ -5,9 +5,12 @@ namespace BusPlanner.Engine;
 /// <summary>Finds the next two feasible trips at each stage of a configured journey.</summary>
 public sealed class JourneyPlanner(
     GtfsSchedule schedule,
-    TimeSpan? maximumRealtimeAge = null)
+    TimeSpan? maximumRealtimeAge = null,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? realtimeRouteIdPrefixes = null)
 {
     private readonly TimeSpan _maximumRealtimeAge = maximumRealtimeAge ?? TimeSpan.FromMinutes(3);
+    private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _realtimeRouteIdPrefixes =
+        realtimeRouteIdPrefixes ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
     public JourneyPlanResult Plan(JourneyPlanRequest request, RealtimeSnapshot? realtime = null)
     {
@@ -161,7 +164,15 @@ public sealed class JourneyPlanner(
                         continue;
                     }
 
-                    var update = FindTripUpdate(realtime, trip.Id, serviceDate, frequencyStart, scheduledDeparture, calculationTime);
+                    var update = FindTripUpdate(
+                        realtime,
+                        trip.Id,
+                        route.ShortName,
+                        serviceDate,
+                        frequencyStart,
+                        tripTemplateStart,
+                        scheduledDeparture,
+                        calculationTime);
                     if (update is not null && !IsFresh(update.Timestamp, realtime!.FeedTimestamp, calculationTime))
                     {
                         update = null;
@@ -197,7 +208,7 @@ public sealed class JourneyPlanner(
                         continue;
                     }
 
-                    var warnings = GetWarnings(realtime, trip, leg, estimatedDeparture, estimatedArrival);
+                    var warnings = GetWarnings(realtime, trip, route, leg, estimatedDeparture, estimatedArrival);
                     if (warnings.Blocking)
                     {
                         continue;
@@ -251,8 +262,10 @@ public sealed class JourneyPlanner(
     private RealtimeTripUpdate? FindTripUpdate(
         RealtimeSnapshot? snapshot,
         string tripId,
+        string? routeShortName,
         DateOnly serviceDate,
         TimeSpan? frequencyStart,
+        TimeSpan tripStartTime,
         DateTimeOffset scheduledDeparture,
         DateTimeOffset calculationTime)
     {
@@ -262,37 +275,51 @@ public sealed class JourneyPlanner(
         }
 
         var matches = snapshot.TripUpdates.Where(x => x.TripId == tripId).ToArray();
-        if (matches.Length == 0)
+        if (matches.Length > 0)
+        {
+            var dateMatch = matches.Where(x => x.StartDate == serviceDate).ToArray();
+            if (frequencyStart is not null)
+            {
+                var startText = FormatGtfsTime(frequencyStart.Value);
+                var startMatch = dateMatch.FirstOrDefault(x => x.StartTime == startText);
+                if (startMatch is not null)
+                {
+                    return startMatch;
+                }
+            }
+
+            if (dateMatch.Length == 1)
+            {
+                return dateMatch[0];
+            }
+
+            var undated = matches.Where(x => x.StartDate is null).ToArray();
+            if (undated.Length == 1
+                && matches.Length == 1
+                && scheduledDeparture >= calculationTime - TimeSpan.FromHours(24)
+                && scheduledDeparture <= calculationTime + TimeSpan.FromHours(3))
+            {
+                return undated[0];
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(routeShortName))
         {
             return null;
         }
 
-        var dateMatch = matches.Where(x => x.StartDate == serviceDate).ToArray();
-        if (frequencyStart is not null)
-        {
-            var startText = FormatGtfsTime(frequencyStart.Value);
-            var startMatch = dateMatch.FirstOrDefault(x => x.StartTime == startText);
-            if (startMatch is not null)
-            {
-                return startMatch;
-            }
-        }
+        var prefixes = _realtimeRouteIdPrefixes.TryGetValue(routeShortName, out var configuredPrefixes)
+            ? configuredPrefixes
+            : new[] { $"{routeShortName}-" };
+        var expectedStartTime = FormatGtfsTime(frequencyStart ?? tripStartTime);
+        var routeMatches = snapshot.TripUpdates.Where(update =>
+            update.StartDate == serviceDate
+            && update.StartTime == expectedStartTime
+            && update.RouteId is not null
+            && prefixes.Any(prefix => update.RouteId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
 
-        if (dateMatch.Length == 1)
-        {
-            return dateMatch[0];
-        }
-
-        var undated = matches.Where(x => x.StartDate is null).ToArray();
-        if (undated.Length == 1
-            && matches.Length == 1
-            && scheduledDeparture >= calculationTime - TimeSpan.FromHours(24)
-            && scheduledDeparture <= calculationTime + TimeSpan.FromHours(3))
-        {
-            return undated[0];
-        }
-
-        return null;
+        return routeMatches.Length == 1 ? routeMatches[0] : null;
     }
 
     private bool IsSkipped(
@@ -416,15 +443,16 @@ public sealed class JourneyPlanner(
             return bySequence;
         }
 
-        var stopMatches = tripStopTimes.Count(x => x.StopId == target.StopId);
+        var stopMatches = tripStopTimes.Count(x => SameStopIdentifier(x.StopId, target.StopId));
         return stopMatches == 1
-            ? update.StopUpdates.FirstOrDefault(x => x.StopId == target.StopId)
+            ? update.StopUpdates.FirstOrDefault(x => x.StopId is not null && SameStopIdentifier(x.StopId, target.StopId))
             : null;
     }
 
-    private static (bool Blocking, IReadOnlyList<string> Messages) GetWarnings(
+    private (bool Blocking, IReadOnlyList<string> Messages) GetWarnings(
         RealtimeSnapshot? snapshot,
         TransitTrip trip,
+        TransitRoute route,
         JourneyLeg leg,
         DateTimeOffset departure,
         DateTimeOffset arrival)
@@ -444,9 +472,10 @@ public sealed class JourneyPlanner(
             }
 
             var matching = alert.Selectors.Where(selector =>
-                (selector.RouteId is null || selector.RouteId == trip.RouteId)
+                (selector.RouteId is null || IsRouteSelectorMatch(selector.RouteId, trip.RouteId, route.ShortName))
                 && (selector.TripId is null || selector.TripId == trip.Id)
-                && (selector.StopId is null || selector.StopId == leg.BoardStopId || selector.StopId == leg.AlightStopId))
+                &&
+                (selector.StopId is null || SameStopIdentifier(selector.StopId, leg.BoardStopId) || SameStopIdentifier(selector.StopId, leg.AlightStopId)))
                 .ToArray();
             if (matching.Length == 0)
             {
@@ -455,7 +484,8 @@ public sealed class JourneyPlanner(
 
             if (alert.Effect == RealtimeAlertEffect.NoService
                 || (alert.Effect == RealtimeAlertEffect.StopMoved
-                    && matching.Any(x => x.StopId == leg.BoardStopId || x.StopId == leg.AlightStopId)))
+                    && matching.Any(x => x.StopId is not null
+                        && (SameStopIdentifier(x.StopId, leg.BoardStopId) || SameStopIdentifier(x.StopId, leg.AlightStopId)))))
             {
                 blocking = true;
                 continue;
@@ -472,6 +502,24 @@ public sealed class JourneyPlanner(
         }
 
         return (blocking, warnings.Distinct(StringComparer.Ordinal).ToArray());
+
+        bool IsRouteSelectorMatch(string selectorRouteId, string scheduleRouteId, string? routeShortName)
+        {
+            if (selectorRouteId == scheduleRouteId)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(routeShortName))
+            {
+                return false;
+            }
+
+            var prefixes = _realtimeRouteIdPrefixes.TryGetValue(routeShortName, out var configuredPrefixes)
+                ? configuredPrefixes
+                : new[] { $"{routeShortName}-" };
+            return prefixes.Any(prefix => selectorRouteId.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     private static bool IsActiveDuring(RealtimeServiceAlert alert, DateTimeOffset start, DateTimeOffset end)
@@ -484,6 +532,16 @@ public sealed class JourneyPlanner(
         return alert.ActivePeriods.Any(period =>
             (period.Start is null || period.Start <= end)
             && (period.End is null || period.End >= start));
+    }
+
+    private static bool SameStopIdentifier(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(NormalizeStopIdentifier(left), NormalizeStopIdentifier(right), StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeStopIdentifier(string value)
+    {
+        var normalized = value.TrimStart('0');
+        return normalized.Length == 0 ? "0" : normalized;
     }
 
     private TripEstimate ToEstimate(Candidate candidate, int legIndex, DateTimeOffset? transferReadyAt)
@@ -527,7 +585,7 @@ public sealed class JourneyPlanner(
         return $"{hours:00}:{value.Minutes:00}:{value.Seconds:00}";
     }
 
-    private static void ValidateRequest(JourneyPlanRequest request)
+    private void ValidateRequest(JourneyPlanRequest request)
     {
         if (request.Legs.Count == 0)
         {
@@ -590,4 +648,3 @@ public sealed class JourneyPlanner(
         EstimateSource ArrivalSource,
         IReadOnlyList<string> Warnings);
 }
-

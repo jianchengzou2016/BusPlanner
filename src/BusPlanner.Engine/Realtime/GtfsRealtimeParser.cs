@@ -68,7 +68,8 @@ public sealed class GtfsRealtimeParser
             status,
             update.HasTimestamp ? TryFromUnixSeconds(update.Timestamp) : null,
             update.HasDelay ? update.Delay : null,
-            stopUpdates);
+            stopUpdates,
+            string.IsNullOrWhiteSpace(trip.RouteId) ? null : trip.RouteId);
     }
 
     private static RealtimeStopEvent ParseEvent(TripUpdate.Types.StopTimeEvent value) => new(
@@ -125,4 +126,3 @@ public sealed class GtfsRealtimeParser
 #pragma warning restore CS0618
     }
 }
-

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#123c35">
+  <meta name="description" content="Live bus connection estimates for a configured journey.">
+  <title>BusPlanner</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="BusPlanner home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span>BusPlanner</span>
+      </a>
+      <span id="connection-state" class="connection-state">Preparing journey…</span>
+    </header>
+
+    <section class="intro" aria-labelledby="journey-title">
+      <p class="eyebrow">Your connection, at a glance</p>
+      <h1 id="journey-title">Your journey</h1>
+      <p id="journey-subtitle" class="subtitle">Checking the next buses and the transfer.</p>
+    </section>
+
+    <section class="controls card" aria-label="Journey adjustments">
+      <div class="control-row">
+        <label for="stage">I’m starting</label>
+        <select id="stage" name="stage">
+          <option value="origin">At the first boarding stop</option>
+          <option value="interchange">At the transfer boarding stop</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label for="approach-minutes">Time until I can board</label>
+        <div class="number-control">
+          <input id="approach-minutes" name="approachMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="10">
+          <span>min</span>
+        </div>
+      </div>
+      <div id="transfer-control" class="control-row transfer-control">
+        <label for="transfer-minutes">Platform change time</label>
+        <div class="number-control">
+          <input id="transfer-minutes" name="transferMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="4">
+          <span>min</span>
+        </div>
+      </div>
+      <div class="control-actions">
+        <p id="refresh-note" class="refresh-note">Updates automatically every minute.</p>
+        <button id="refresh-button" type="button" class="refresh-button">
+          <span aria-hidden="true">↻</span> Refresh
+        </button>
+      </div>
+    </section>
+
+    <section class="results-section" aria-labelledby="results-heading" aria-live="polite">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Catchable options</p>
+          <h2 id="results-heading">Next departures</h2>
+        </div>
+        <div id="feed-status" class="feed-status">Loading schedule…</div>
+      </div>
+      <div id="notices" class="notices" hidden></div>
+      <div id="results" class="results-list">
+        <div class="loading-card card" role="status">Loading the next two options…</div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <p>Transit data: <a href="https://translink.com.au/about-translink/open-data" target="_blank" rel="noreferrer">Translink Open Data</a> · Licensed under CC BY 4.0.</p>
+      <p>Times are estimates. Check official service information before travelling.</p>
+    </footer>
+  </main>
+</body>
+</html>
