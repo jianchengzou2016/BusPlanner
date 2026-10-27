@@ -32,11 +32,13 @@ For each configured journey, the link supplies a default starting stage and rema
 2. Apply the configured default or user-adjusted remaining approach time to the selected starting stop/platform. Find the next two eligible trips departing no earlier than that time, subject to configured route and direction constraints. If useful, show when the passenger should leave to catch each option.
 3. Estimate each candidate trip's arrival at the next interchange using stop-level real-time data when fresh and available; otherwise use its scheduled arrival and label it accordingly.
 4. Add the configured transfer allowance to the interchange arrival time.
-5. Find the earliest eligible onward trip from the configured transfer platform that departs at or after the transfer-ready time.
+5. Find the two earliest eligible onward trips from the configured transfer platform that depart at or after the transfer-ready time. Present the first as the primary connection and the next as the backup. Apply available live departure predictions and cancellation/skipped-stop information when deciding whether each service remains catchable.
 6. Estimate arrival at the destination stop, with the same live-versus-scheduled labelling.
-7. Present both candidate connections in a compact mobile view, including the selected starting point, remaining approach time, route, stop/platform, departure/arrival times, transfer allowance, source status, and last update time.
+7. For each of the two first-leg candidates, present the primary and backup onward connections in a compact mobile view, including the selected starting point, remaining approach time, route, stop/platform, departure/arrival times, transfer allowance, source status, and last update time.
 
 The initial example uses a four-minute transfer allowance as a configurable starting value. It is not a permanent assumption about every interchange. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
+
+The connection engine should not assume the primary onward bus will operate or remain catchable during busy periods. The backup is the next distinct feasible onward trip after the primary, recalculated from the same first-leg arrival and transfer allowance; if realtime cancellation or skipped-stop data makes a candidate unusable, exclude it and continue to the next eligible service. If no second feasible onward trip exists, show that no backup is currently available.
 
 The approach time is separate from the transfer allowance. It represents the remaining time until the passenger can board at the selected starting stop/platform, including walking or getting ready to leave. Illustrative quick-link defaults may range from under 10 minutes for a nearby starting point, 10–15 minutes for a longer walk, and 15–20 minutes for an after-work journey; configure these per journey and confirm actual values later. A user can adjust a 10-minute default to 5 minutes when already partway to the stop. The user can also choose the interchange platform as the current starting point; earlier journey legs are then omitted. This is a manual, per-request override and is not saved server-side.
 
@@ -83,7 +85,7 @@ The public site needs no login for the family use case, but a public URL is stil
 - A public, responsive browser experience.
 - Configurable multi-leg journeys and generated or configured quick links.
 - A simple selector for configured journey stages/boarding stops and an editable remaining approach-time value.
-- Two candidate first-leg services with onward connection calculations.
+- Two candidate first-leg services, each with a primary and backup onward connection when available.
 - Clear scheduled/live labels and data freshness.
 - One configured journey working end to end before generalizing to additional journeys.
 - Azure deployment planning and cost controls.
@@ -119,7 +121,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Create the .NET solution in BusPlanner.
 - Implement static GTFS loading/indexing, service-day and timezone handling, route/stop trip matching, and candidate departure lookup.
 - Implement GTFS-Realtime parsing, trip/stop matching, freshness assessment, and scheduled fallback representation.
-- Implement the two-first-leg candidate calculation and onward-connection selection after the transfer allowance.
+- Implement the two-first-leg candidate calculation and the primary plus backup onward-service selection after each transfer allowance, accounting for available realtime cancellation/skipped-stop data.
 
 **Exit condition:** The engine returns a structured result for both candidate services, including live/scheduled provenance and a clear no-connection or unavailable-data state.
 
@@ -160,5 +162,5 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 ## 8. Acceptance summary for the first release
 
-The first release is complete when one configured journey opens from a quick link on a mobile browser, lets the passenger change the starting stage and remaining approach time, excludes trips that depart before the passenger can reach the selected starting stop/platform, shows the next two catchable options, calculates feasible onward services after each transfer allowance, estimates final arrival, and clearly distinguishes fresh real-time predictions from timetable-only estimates or unavailable data. Repeated page refreshes during the cache interval must reuse the shared feed result, and concurrent cache misses must not fan out into duplicate provider requests. The app must run without sign-in and without storing user profiles, while having documented request and cost safeguards for its public endpoint.
+The first release is complete when one configured journey opens from a quick link on a mobile browser, lets the passenger change the starting stage and remaining approach time, excludes trips that depart before the passenger can reach the selected starting stop/platform, shows the next two catchable first-leg options, and for each calculates the primary and next feasible backup onward service after the transfer allowance. It estimates final arrival and clearly distinguishes fresh real-time predictions from timetable-only estimates or unavailable data. Repeated page refreshes during the cache interval must reuse the shared feed result, and concurrent cache misses must not fan out into duplicate provider requests. The app must run without sign-in and without storing user profiles, while having documented request and cost safeguards for its public endpoint.
 
