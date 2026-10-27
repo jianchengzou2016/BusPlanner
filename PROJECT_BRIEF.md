@@ -19,6 +19,7 @@ The first end-to-end example is a configured afternoon journey with one bus to a
 - Lets the passenger adjust the quick link's default starting point within the configured journey and the remaining time before they can board there; these are request/session choices and need not be saved to a user profile.
 - Uses a fresh Translink real-time prediction when available. If unavailable, it may show the timetable estimate, clearly labelled as scheduled, along with feed freshness.
 - Is real-time-first for configured school/work/home journeys: Translink stop-level real-time predictions inform current service options; the static timetable is a clearly labelled fallback rather than the primary status.
+- The first release evaluates the next services from now on a small set of configured fixed journeys; it is not a future-departure planner or general route-search service.
 - Shows when the information was last updated. Missing, stale, or ambiguous source data must not be presented as a live prediction.
 - Treats a journey URL as a complete, shareable calculation request. A convenience quick link can resolve to the same journey parameters without asking the passenger to edit them.
 - Has no sign-in and stores no personal user information. Journey details in a shareable URL may be visible to anyone who has that URL, so public links should use generic labels.
@@ -40,6 +41,8 @@ For each configured journey, the link supplies a default starting stage and rema
 Use a configurable transfer allowance for each specific arrival-platform to onward-boarding-platform pair, with four minutes as an initial value for a short change such as the Mater Hill example. A longer platform walk, such as changing to a distant platform at a large station, may need a longer default. Show the allowance within the transfer summary and let the passenger adjust it for the current request through a compact inline edit, rather than a separate always-visible settings control. Keep that override local to the current request; do not save it to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
 
 The connection engine should not assume the primary onward bus will operate or remain catchable during busy periods. The backup is the next distinct feasible onward trip after the primary, recalculated from the same first-leg arrival and transfer allowance; if realtime cancellation or skipped-stop data makes a candidate unusable, exclude it and continue to the next eligible service. If no second feasible onward trip exists, show that no backup is currently available. Fresh stop-level arrival/departure predictions are the primary evidence for current conditions. Raw vehicle-position data is not used to derive arrival times in the first release; a vehicle position by itself must not be presented as a precise arrival time.
+
+For relevant Translink service alerts, explicitly cancelled trips and trips that skip the configured boarding/alighting stop are excluded. A closure or moved-stop alert makes the configured connection unavailable unless the replacement stop is configured. A detour or modified-service alert should be shown as a warning; retain the trip only when its current stop-level prediction still supports a feasible connection.
 
 The approach time is separate from the transfer allowance. It represents the remaining time until the passenger can board at the selected starting stop/platform, including walking or getting ready to leave. Illustrative quick-link defaults may range from under 10 minutes for a nearby starting point, 10–15 minutes for a longer walk, and 15–20 minutes for an after-work journey; configure these per journey and confirm actual values later. A user can adjust a 10-minute default to 5 minutes when already partway to the stop. The user can also choose a specific later boarding platform in the journey as the current starting point; earlier journey legs are then omitted, and approach time defaults to zero at that selected platform. If the passenger is still walking between platforms or otherwise cannot board immediately, they can override that remaining approach time. Transfer allowance is applied only between legs when the engine calculates a connection; it is not added again when starting at a later platform. This is a manual, per-request override and is not saved server-side.
 
@@ -74,8 +77,8 @@ A full URL can carry the complete journey request, allowing a user to bookmark o
 - Keep two separate timing rules: (1) a configurable one-minute cache time-to-live measured from the upstream fetch, so requests reuse that payload for at most one minute before a later request triggers a refresh; (2) a configurable three-minute maximum age of the feed's own timestamp for considering its prediction fresh. Evaluate feed age on every request, even when the payload came from cache. Do not use sliding cache expiration, since repeat requests must not make an old feed appear new. Do not run a background poller in the first version solely to refresh the cache.
 - Coalesce simultaneous cache misses so a burst of incoming requests causes at most one upstream fetch per feed/cache interval. Cache TripUpdates for the first release; do not request VehiclePositions unless a later requirement actually needs them.
 - If the upstream feed is unavailable, return a clearly labelled timetable estimate or stale-data state according to the journey rules; do not repeatedly retry the provider for every concurrent request. A cached response whose source timestamp is older than three minutes is stale even if it was just fetched; do not present it as a fresh live prediction.
-- Apply bounded request rates and validation to the public API, and set a minimum browser refresh interval. Prefer allowing only supported journey parameters/routes rather than arbitrary expensive feed queries.
-- Use Azure budget and anomaly alerts, and document any available automated action to disable or limit the API at a cost threshold. Alerts alone are not a hard spending cap; incoming requests, app execution, and outbound bandwidth may still be billed even when upstream feed calls are cached.
+- Apply bounded request rates and validation to the public API, and set a minimum browser refresh interval. Prefer allowing only supported journey parameters/routes rather than arbitrary expensive feed queries. Start with ASP.NET Core rate limiting and cache controls; a separately paid WAF or DDoS product is not a first-release dependency unless it is already included at no material added cost in the chosen hosting plan.
+- Treat a large targeted attack as low likelihood for this family-use site, while guarding against crawlers, accidental loops, and smaller request bursts. Use Azure budget/anomaly alerts and configure an automatic API limit or shutoff at a chosen cost threshold where supported; otherwise document the quickest manual shutoff. Alerts alone are not a hard spending cap, and incoming requests, app execution, and outbound bandwidth may still be billed even when upstream feed calls are cached.
 
 The public site needs no login for the family use case, but a public URL is still reachable by others. A short link is not access control. Cache and rate limits reduce exposure to request spikes; Azure bills usage to the subscription/resource owner, subject to that hosting service's pricing, free grants, and subscription terms.
 
@@ -84,7 +87,7 @@ The public site needs no login for the family use case, but a public URL is stil
 ### In scope
 
 - A public, responsive browser experience.
-- Configurable multi-leg journeys and generated or configured quick links.
+- A small set of configured fixed multi-leg journeys and generated or configured quick links, calculated from now.
 - A simple selector for configured journey stages/boarding stops and an editable remaining approach-time value.
 - A compact inline way to adjust the transfer allowance for the current request.
 - Two candidate first-leg services, each with a primary and backup onward connection when available.
@@ -99,6 +102,7 @@ The public site needs no login for the family use case, but a public URL is stil
 - AnkoDisplay’s `dashboard/transport_poc/`: it is an early prototype and is explicitly **not** part of BusPlanner’s implementation scope. It may not be imported, modified, or treated as a dependency.
 - User accounts, authentication, saved personal profiles, or a server-side user database.
 - General-purpose door-to-door itinerary search, walking navigation, or automatic discovery of arbitrary routes.
+- Future departure-time planning in the first release.
 - Mobile GPS collection or GPS-derived walking-time estimates.
 - QLDTraffic road incident analysis, traffic-based delay inference, and unrelated weather/display features.
 - A native mobile app or mandatory progressive-web-app installation.
