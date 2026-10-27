@@ -20,7 +20,7 @@ public sealed class GtfsRealtimeParser
         var tripUpdates = new List<RealtimeTripUpdate>();
         var alerts = new List<RealtimeServiceAlert>();
 
-        foreach (var entity in feed.Entities)
+        foreach (var entity in feed.Entity)
         {
             if (entity.TripUpdate is not null)
             {
@@ -39,7 +39,7 @@ public sealed class GtfsRealtimeParser
     private static RealtimeTripUpdate ParseTripUpdate(TripUpdate update)
     {
         var trip = update.Trip;
-        var startDate = DateOnly.TryParseExact(trip.StartDate, "yyyyMMdd", out var date) ? date : null;
+        DateOnly? startDate = DateOnly.TryParseExact(trip.StartDate, "yyyyMMdd", out var date) ? date : null;
         var status = (int)trip.ScheduleRelationship switch
         {
             0 => RealtimeTripStatus.Scheduled,
@@ -120,7 +120,7 @@ public sealed class GtfsRealtimeParser
 
     private static Google.Protobuf.Collections.RepeatedField<TimeRange> GetLegacyActivePeriods(Alert alert)
     {
-#pragma warning disable CS0618 // active_period is deprecated in the spec but remains the fallback for older feeds.
+#pragma warning disable CS0612, CS0618 // active_period is deprecated in the spec but remains the fallback for older feeds.
         return alert.ActivePeriod;
 #pragma warning restore CS0618
     }
