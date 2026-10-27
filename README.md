@@ -17,7 +17,7 @@ The engine is intentionally independent of the web UI, Azure hosting, and journe
 
 ## Toolchain
 
-The solution targets .NET 10. The machine used to scaffold this project currently has only the .NET 8 SDK; install the .NET 10 SDK before building the solution.
+The solution targets .NET 10. It was verified with .NET SDK 10.0.403. Build and test it with `dotnet build BusPlanner.sln -c Release` and `dotnet test BusPlanner.sln`.
 
 ## Feed considerations
 
