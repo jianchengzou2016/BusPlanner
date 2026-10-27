@@ -1,7 +1,10 @@
+Warning: truncated output (original token count: 6087)
+Total output lines: 186
+
 # BusPlanner — Design Requirements and Milestones
 
-**Status:** Initial product brief  
-**Date:** 26 October 2026
+**Status:** Milestone 0 — requirements substantially agreed; Azure deployment choice remains open  
+**Date:** 27 October 2026
 
 ## 1. Product goal
 
@@ -52,10 +55,10 @@ The initial release does not request or share mobile-device GPS. Browser locatio
 ## 4. Technical direction
 
 - **Language/runtime:** C# on .NET 10 LTS.
-- **Application:** ASP.NET Core, initially one deployable web app serving the mobile-first interface and journey API.
+- **Application:** C# / ASP.NET Core API with a responsive browser interface. Prefer a static front end so idle visits do not keep a web server running.
 - **Data:** Translink SEQ GTFS-Realtime TripUpdates are the primary source for live stop-level predictions. Static GTFS supplies route/stop structure and the clearly labelled scheduled fallback. VehiclePositions are not required for the first release.
 - **Persistence:** No user database for the first version. Cache shared transport data in a deployment-appropriate way; journey parameters come from the request URL or a small, static quick-link mapping in app configuration.
-- **Hosting:** Azure is the preferred target, subject to a verified deployment path and cost estimate for the selected .NET hosting model. Staying within available free allowances/credits is a goal, not a cost guarantee.
+- **Hosting:** Azure Static Web Apps Free is the leading option for the responsive static site. The API hosting shape still needs a decision: use its integrated managed Function API for the simplest deployment, or a separate Azure Functions Flex Consumption API for a configurable maximum instance count and more predictable scale exposure. A separate API needs CORS configuration and a second resource; neither design makes a public endpoint immune to charges. Staying within free allowances/credits is a goal, not a cost guarantee.
 - **Architecture:** Keep timetable parsing, real-time feed handling, connection selection, and web presentation separate enough to reason about and replace independently. Prefer indexed timetable lookups and shared feed caching over scanning and downloading the full feed for each visitor request.
 
 ### Journey URL and parameter boundary
@@ -72,10 +75,9 @@ Feed URLs, cache durations, provider freshness thresholds, API request limits, a
 
 A full URL can carry the complete journey request, allowing a user to bookmark or share a particular configuration without an account. A short, memorable quick link may instead use a journey key mapped to the same parameter set in static app configuration. That mapping is convenience, not authentication or privacy: anyone with the link may view the journey, and URL parameters or configured labels can reveal stop/location details.
 
-### Live feed caching and cost controls
+The agreed product approach is a concise configured quick link with supported per-request overrides such as starting stage, remaining approach time, and transfer allowance. Exact URL syntax is an implementation detail. The URL contract must not expose feed, cache, rate-limit, or hosting settings.
 
-- Cache the shared Translink realtime feed on demand. A journey request first checks the cache; only a missing or expired cache entry triggers an upstream fetch.
-- Keep two separate timing rules: (1) a configurable one-minute cache time-to-live measured from the upstream fetch, so requests reuse that payload for at most one minute before a later request triggers a refresh; (2) a configurable three-minute maximum age of the feed's own timestamp for considering its prediction fresh. Evaluate feed age on every request, even when the payload came from cache. Do not use sliding cache expiration, since repeat requests must not make an old feed appear new. Do not run a background poller in the first version solely to refresh the cache.
+### Live feed caching and cost c…87 tokens truncated…e a later request triggers a refresh; (2) a configurable three-minute maximum age of the feed's own timestamp for considering its prediction fresh. Evaluate feed age on every request, even when the payload came from cache. Do not use sliding cache expiration, since repeat requests must not make an old feed appear new. Do not run a background poller in the first version solely to refresh the cache.
 - Coalesce simultaneous cache misses so a burst of incoming requests causes at most one upstream fetch per feed/cache interval. Cache TripUpdates for the first release; do not request VehiclePositions unless a later requirement actually needs them.
 - If the upstream feed is unavailable, return a clearly labelled timetable estimate or stale-data state according to the journey rules; do not repeatedly retry the provider for every concurrent request. A cached response whose source timestamp is older than three minutes is stale even if it was just fetched; do not present it as a fresh live prediction.
 - Apply bounded request rates and validation to the public API, and set a minimum browser refresh interval. Prefer allowing only supported journey parameters/routes rather than arbitrary expensive feed queries. Start with ASP.NET Core rate limiting and cache controls; a separately paid WAF or DDoS product is not a first-release dependency unless it is already included at no material added cost in the chosen hosting plan.
@@ -84,6 +86,13 @@ A full URL can carry the complete journey request, allowing a user to bookmark o
 The public site needs no login for the family use case, but a public URL is still reachable by others. A short link is not access control. Cache and rate limits reduce exposure to request spikes; Azure bills usage to the subscription/resource owner, subject to that hosting service's pricing, free grants, and subscription terms.
 
 The page should refresh its journey result automatically every 60 seconds and provide a manual refresh action. Both refresh paths must retain the current starting stage, transfer-time overrides, and countdown state; neither may reset the approach countdown to the quick-link default. Manual refresh uses the shared feed cache if its one-minute cache lifetime has not expired.
+
+### Translink data and public-use obligations
+
+- Use the official SEQ GTFS-Realtime TripUpdates feed with the corresponding static GTFS data. Translink publishes these feeds without authentication under CC BY 4.0 and requires attribution.
+- Translink describes its live arrival times as predictions based on bus GPS compared with the timetable. Its passenger guidance says live predictions are available for services within the next 60 minutes; beyond that, the timetable is shown. The planner must therefore expect scheduled-only results for farther services.
+- The one-minute cache TTL and three-minute maximum feed age are initial application policies, not Translink guarantees. The feed polling cadence is not published in the material reviewed, and the live feed could not be inspected during this requirements review. Validate both thresholds against observed feed timestamps and results during implementation.
+- Before public launch, include the required attribution, avoid Translink branding/logos without approval, and provide current operator contact details as required by the open-data terms. Explain that transport data may be incomplete, delayed, changed, or unavailable and is not guaranteed by the data provider.
 
 ## 5. Scope boundaries
 
@@ -119,11 +128,11 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Freeze the initial journey inputs: stop IDs, route constraints, direction, transfer platform, transfer allowance, and destination.
 - Set a configurable first-stop approach time for each journey; keep it distinct from the interchange transfer allowance.
 - Record the behavior when only scheduled data is available, when a feed is stale, and when a connection cannot be made.
-- Confirm current Translink feed access, attribution requirements, and refresh expectations.
-- Select and cost-check an Azure hosting model that supports the chosen .NET application.
-- Estimate cost exposure from incoming API calls, compute, storage, and outbound bandwidth; identify a practical threshold response in addition to budget alerts.
+- Record official feed scope, attribution, the 60-minute live-prediction horizon, and provider limitations; validate actual feed freshness during implementation.
+- Choose between the integrated Static Web Apps managed API and a separate Flex Consumption API, then cost-check its request grants, execution, storage, and bandwidth exposure.
+- Define the API request limiter and quickest practical disable action. Treat budget alerts as notifications, not as a spending cap.
 
-**Exit condition:** One journey can be represented as configuration without embedding stop/route assumptions in the calculation code; deployment and data-source constraints are documented.
+**Exit condition:** Product behavior and the data contract are documented; the first journey's exact stops remain configuration inputs. Record the hosting choice before deployment; it is not required before starting engine work.
 
 ### Milestone 1 — Build the C# journey engine
 
@@ -159,17 +168,17 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 **Exit condition:** The app is reachable on mobile browsers and has a documented operating/cost plan. Actual cost depends on hosting configuration, usage, and available subscription benefits.
 
-## 7. Open decisions
+## 7. Remaining decisions and validation
 
-- Confirm the physical boarding, transfer, and destination stops and acceptable route variants when ready; stop details can be resolved after the initial structure is in place.
-- Confirm default transfer allowances for the configured platform pairs; use four minutes only as a starting value for short platform changes.
-- Show each transfer allowance in the itinerary and allow a per-request inline adjustment without adding a permanent settings panel.
-- Confirm each journey's approach time to its first stop and whether the user wants a “leave by” time shown.
-- Confirm the configured start-stage choices and which platform should be selected when a passenger is already at an interchange.
-- Use specific boarding stops/platforms as start-stage choices; default remaining approach time to zero at the selected platform and apply transfer allowance only between journey legs.
-- Verify the initial one-minute cache TTL and three-minute source-feed age threshold against actual Translink behavior and app usage; keep them as separate server settings.
-- Decide the concise public URL syntax and whether the first release needs both full parameter URLs and short configured quick links; both avoid user accounts, and neither hides journey details from link recipients.
-- Verify the exact Azure hosting option, .NET support, quotas, and likely cost before deployment.
+Milestone 0 is substantially agreed. The remaining product inputs can be supplied when the first journey is configured; they do not prevent beginning the generic engine:
+
+- Confirm the actual boarding, interchange-platform, destination stops, and allowed route variants for the first journey.
+- Set that journey's default approach time and transfer allowance for each platform pair. The passenger can adjust these per request; no values are needed for the reusable engine design.
+- Decide whether to show a “leave by” time. This is optional presentation detail and can be settled during the first mobile page.
+- Choose the Azure API hosting shape: (A) integrated managed API for less setup and one integrated deployment, or (B) separate Flex Consumption API for an explicit maximum-instance setting and more control over scale, with extra CORS/resource configuration. Neither option is a hard cost cap.
+- Validate the one-minute cache TTL and three-minute source-age policy against the real feed during implementation. These are starting settings, not a Milestone 0 blocker.
+
+The journey URL approach is agreed at the product level: a short configured quick link represents the defaults, and the passenger can override supported trip parameters for the current calculation. Exact URL syntax is an implementation detail. Starting-stage selection, countdown behavior, inline transfer adjustment, 60-second browser refresh, no phone GPS, and two onward options are settled.
 
 ## 8. Acceptance summary for the first release
 
