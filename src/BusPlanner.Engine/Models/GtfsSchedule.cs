@@ -1,7 +1,17 @@
 namespace BusPlanner.Engine.Models;
 
+/// <summary>A stop in the static transit schedule.</summary>
+/// <param name="Id">The feed's stop identifier.</param>
+/// <param name="Name">The passenger-facing stop name.</param>
+/// <param name="ParentStationId">The parent station identifier, when this is a platform or child stop.</param>
 public sealed record TransitStop(string Id, string Name, string? ParentStationId);
 
+/// <summary>A public transit route described by the schedule feed.</summary>
+/// <param name="Id">The feed's route identifier.</param>
+/// <param name="ShortName">The passenger-facing route label, such as a route number.</param>
+/// <param name="LongName">The longer route description, when supplied.</param>
+/// <param name="RouteType">The GTFS route type code, when supplied.</param>
+/// <param name="AgencyId">The identifier of the operating agency, when supplied.</param>
 public sealed record TransitRoute(
     string Id,
     string? ShortName,
@@ -9,6 +19,12 @@ public sealed record TransitRoute(
     int? RouteType,
     string? AgencyId);
 
+/// <summary>A scheduled vehicle journey operating on a route.</summary>
+/// <param name="Id">The feed's trip identifier.</param>
+/// <param name="RouteId">The route this trip operates on.</param>
+/// <param name="ServiceId">The service calendar that determines the operating dates.</param>
+/// <param name="HeadSign">The passenger-facing destination or direction text, when supplied.</param>
+/// <param name="DirectionId">The feed's direction identifier, when supplied.</param>
 public sealed record TransitTrip(
     string Id,
     string RouteId,
@@ -16,6 +32,13 @@ public sealed record TransitTrip(
     string? HeadSign,
     int? DirectionId);
 
+/// <summary>A scheduled arrival or departure at one stop on a trip.</summary>
+/// <param name="TripId">The trip this stop time belongs to.</param>
+/// <param name="StopId">The stop served by the trip at this point.</param>
+/// <param name="StopSequence">The stop's order within the trip.</param>
+/// <param name="ArrivalTime">The GTFS service-day arrival time; values may exceed 24 hours.</param>
+/// <param name="DepartureTime">The GTFS service-day departure time; values may exceed 24 hours.</param>
+/// <param name="Timepoint">Whether the feed identifies this time as a timepoint.</param>
 public sealed record TransitStopTime(
     string TripId,
     string StopId,
@@ -24,14 +47,29 @@ public sealed record TransitStopTime(
     TimeSpan? DepartureTime,
     bool Timepoint);
 
+/// <summary>Weekly operating dates for a transit service within a date range.</summary>
+/// <param name="ServiceId">The service identifier referenced by trips.</param>
+/// <param name="StartDate">The first date covered by this calendar.</param>
+/// <param name="EndDate">The last date covered by this calendar.</param>
+/// <param name="OperatingDays">The days of the week on which the service operates.</param>
 public sealed record ServiceCalendar(
     string ServiceId,
     DateOnly StartDate,
     DateOnly EndDate,
     IReadOnlySet<DayOfWeek> OperatingDays);
 
+/// <summary>A date-specific exception that adds or removes a service day.</summary>
+/// <param name="ServiceId">The affected service identifier.</param>
+/// <param name="Date">The date on which the exception applies.</param>
+/// <param name="Added"><see langword="true"/> when service is added; otherwise service is removed.</param>
 public sealed record ServiceException(string ServiceId, DateOnly Date, bool Added);
 
+/// <summary>A GTFS frequency window describing repeated departures for a trip template.</summary>
+/// <param name="TripId">The trip template to which the frequency window applies.</param>
+/// <param name="StartTime">The beginning of the service-day frequency window.</param>
+/// <param name="EndTime">The end of the frequency window.</param>
+/// <param name="HeadwaySeconds">The time between departures, in seconds.</param>
+/// <param name="ExactTimes">Whether the feed promises departures at the generated times.</param>
 public sealed record TransitFrequency(
     string TripId,
     TimeSpan StartTime,
@@ -39,6 +77,7 @@ public sealed record TransitFrequency(
     int HeadwaySeconds,
     bool ExactTimes);
 
+/// <summary>An indexed snapshot of the static GTFS schedule used to plan journeys.</summary>
 public sealed class GtfsSchedule
 {
     private readonly Dictionary<string, TransitStopTime[]> _stopTimesByTrip;
@@ -75,9 +114,16 @@ public sealed class GtfsSchedule
             .ToDictionary(x => x.Key, x => x.OrderBy(y => y.StartTime).ToArray(), StringComparer.Ordinal);
     }
 
+    /// <summary>Gets the time zone used to interpret service-day times.</summary>
     public TimeZoneInfo AgencyTimeZone { get; }
+
+    /// <summary>Gets stops keyed by their feed stop identifiers.</summary>
     public IReadOnlyDictionary<string, TransitStop> Stops { get; }
+
+    /// <summary>Gets routes keyed by their feed route identifiers.</summary>
     public IReadOnlyDictionary<string, TransitRoute> Routes { get; }
+
+    /// <summary>Gets the number of trips loaded from the feed.</summary>
     public int TripCount => _tripsById.Count;
 
     internal IReadOnlyList<TransitStopTime> GetStopTimesForTrip(string tripId) =>
@@ -91,6 +137,10 @@ public sealed class GtfsSchedule
     internal IReadOnlyList<TransitFrequency> GetFrequencies(string tripId) =>
         _frequenciesByTrip.TryGetValue(tripId, out var values) ? values : Array.Empty<TransitFrequency>();
 
+    /// <summary>Determines whether a service operates on a date after applying calendar exceptions.</summary>
+    /// <param name="serviceId">The service identifier to check.</param>
+    /// <param name="date">The local service date to check.</param>
+    /// <returns><see langword="true"/> when the service operates on the date.</returns>
     public bool IsServiceActive(string serviceId, DateOnly date)
     {
         if (_exceptions.TryGetValue((serviceId, date), out var added))
