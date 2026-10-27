@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusPlanner.Engine", "src\BusPlanner.Engine\BusPlanner.Engine.csproj", "{86B967E2-026F-45B0-91D5-2B6E1A59B81D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusPlanner.Engine.Tests", "tests\BusPlanner.Engine.Tests\BusPlanner.Engine.Tests.csproj", "{5478806D-2B2D-4C80-8A78-4B1B46E905F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{86B967E2-026F-45B0-91D5-2B6E1A59B81D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{86B967E2-026F-45B0-91D5-2B6E1A59B81D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{86B967E2-026F-45B0-91D5-2B6E1A59B81D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5478806D-2B2D-4C80-8A78-4B1B46E905F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
 
