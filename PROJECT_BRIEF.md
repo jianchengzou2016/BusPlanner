@@ -1,6 +1,6 @@
 # BusPlanner — Design Requirements and Milestones
 
-**Status:** Milestone 0 — complete; Milestone 1 — complete; Milestone 2 — in progress  
+**Status:** Milestones 0–2 — complete; Milestone 3 — next  
 **Date:** 27 October 2026
 
 ## 1. Product goal
@@ -152,9 +152,9 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Make source freshness, scheduled fallbacks, and no-connection states understandable at a glance.
 - Keep configuration out of public source when it contains personal labels or private deployment settings.
 
-**Implementation in progress:** The .NET 10 isolated Function API and responsive static page are in place. Local ignored settings contain the confirmed first journey and defaults. The current static schedule resolves the provided public stop codes after leading-zero normalization. It does not show an onward trip from the configured transfer boarding stop to the exact configured destination; the page must state that no onward connection is available rather than substituting a different stop.
+**Implementation complete and locally validated 27 October 2026:** The .NET 10 isolated Function API and responsive static page are in place. Local ignored settings contain the confirmed first journey and defaults. The API resolved the public stop codes, returned two first-leg options with fresh stop-level predictions, and reported no onward connection to the exact configured destination. Starting at the transfer platform also returned a clear no-service result. The page was checked at 320, 390, and 768 pixel widths with no horizontal overflow. The schedule has no onward trip for the exact selected destination; the app reports this without substituting a nearby stop.
 
-**Exit condition:** The journey can be followed on a phone-sized browser from first departure through destination, with times and source status represented honestly.
+**Exit condition:** On a phone-sized browser, the configured journey shows a complete itinerary when the schedule supports one, or a clear no-connection state when it does not. Times and live-versus-scheduled sources are represented honestly.
 
 ### Milestone 3 — Add journey quick links
 
@@ -176,7 +176,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 Milestone 0 inputs have been supplied for the first journey. Public stop codes are resolved through GTFS `stop_code` or a unique leading-zero-normalized match to the internal `stop_id`. The configured journey uses two legs, a 10-minute approach allowance, and a 4-minute transfer allowance. The private display label and stop configuration are in the ignored local settings file, not tracked source.
 
-- The current static schedule has no onward trip from the configured transfer boarding stop to the exact configured destination. A nearby stop is not substituted automatically, and the page will report that no onward connection is available.
+- The current static schedule has no onward trip from the configured transfer boarding stop to the exact configured destination. The user chose to keep that stop; a nearby stop is not substituted, and the page reports that no onward connection is available.
 - The 27 October 2026 schedule inspection confirmed the selected transfer platforms and did not find an additional eligible service on the configured onward path. Stop-specific details remain in local configuration.
 - Decide whether to show a “leave by” time. This is optional presentation detail and can be settled during the first mobile page.
 - Azure hosting choice is settled for the first version: Azure Static Web Apps Free with its integrated managed Function API. The user expects roughly 10 requests per day; revisit if measured usage or cost changes that assumption.

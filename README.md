@@ -4,7 +4,7 @@ BusPlanner is a mobile-friendly fixed-journey bus connection planner. The design
 
 ## Current work
 
-Milestone 0 and the reusable .NET journey engine in Milestone 1 are complete. Milestone 2 is in progress: the .NET 10 isolated Function API and responsive static page are implemented in `src/BusPlanner.Api` and `src/BusPlanner.Web`.
+Milestones 0–2 are complete. The .NET 10 isolated Function API and responsive static page are implemented in `src/BusPlanner.Api` and `src/BusPlanner.Web`.
 
 The engine in `src/BusPlanner.Engine`:
 
@@ -15,9 +15,9 @@ The engine in `src/BusPlanner.Engine`:
 - Excludes canceled trips and trips that skip a configured boarding or alighting stop; warns on detours and modified service; treats relevant no-service and moved-stop alerts as unavailable.
 - Uses the agency timezone and GTFS service-day times, including times beyond midnight.
 
-The current Release build succeeds with no warnings or errors, and all 12 Release tests pass. A smoke test used Translink's SEQ static schedule and TripUpdates feed. The feed samples were temporary and are not included in this repository.
+The current Release build succeeds with no warnings or errors, and all 12 Release tests pass. A local Functions-host smoke check used Translink's SEQ schedule and a fresh TripUpdates feed: the origin stage returned two live first-leg options and clearly reported no onward service to the exact configured destination; the transfer stage also reported no service. The static page was checked at 320, 390, and 768 pixel widths with no horizontal overflow. Feed samples and local journey settings are excluded from this repository.
 
-Local Function settings are created from `src/BusPlanner.Api/local.settings.example.json` and are ignored by Git. They contain the current journey label and stop/route configuration. Public stop codes are resolved through `stop_code` or unique leading-zero normalization of the feed stop ID. The current schedule does not show an onward trip from the configured transfer boarding stop to the exact destination, so the page must display that unavailable connection clearly. It will not silently substitute a nearby stop.
+Local Function settings are created from `src/BusPlanner.Api/local.settings.example.json` and are ignored by Git. They contain the current journey label and stop/route configuration. Public stop codes are resolved through `stop_code` or unique leading-zero normalization of the feed stop ID. The current schedule does not show an onward trip from the configured transfer boarding stop to the exact destination, so the page displays that unavailable connection clearly. It does not silently substitute a nearby stop.
 
 ## Toolchain
 
