@@ -1,6 +1,6 @@
 # BusPlanner — Design Requirements and Milestones
 
-**Status:** Milestone 1 — journey engine in progress; Milestone 0 requirements substantially agreed  
+**Status:** Milestone 1 — complete; Milestone 0 requirements substantially agreed  
 **Date:** 27 October 2026
 
 ## 1. Product goal
@@ -91,7 +91,7 @@ The page should refresh its journey result automatically every 60 seconds and pr
 
 - Use the official SEQ GTFS-Realtime TripUpdates feed with the corresponding static GTFS data. Translink publishes these feeds without authentication under CC BY 4.0 and requires attribution.
 - Translink describes its live arrival times as predictions based on bus GPS compared with the timetable. Its passenger guidance says live predictions are available for services within the next 60 minutes; beyond that, the timetable is shown. The planner must therefore expect scheduled-only results for farther services.
-- The one-minute cache TTL and three-minute maximum feed age are initial application policies, not Translink guarantees. The feed polling cadence is not published in the material reviewed, and the live feed could not be inspected during this requirements review. Validate both thresholds against observed feed timestamps and results during implementation.
+- The one-minute cache TTL and three-minute maximum feed age are initial application policies, not Translink guarantees. The feed polling cadence is not published. A live-feed smoke test on 27 October 2026 parsed a current snapshot and matched it with the corresponding static feed; validate the cache TTL and freshness policy over repeated observations during implementation.
 - Before public launch, include the required attribution, avoid Translink branding/logos without approval, and have the app operator provide and keep current their contact details with the State as required by the open-data terms. Include a suitable data disclaimer for visitors. Explain that transport data may be incomplete, delayed, changed, or unavailable and is not guaranteed by the data provider.
 
 ## 5. Scope boundaries
@@ -143,6 +143,8 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 **Exit condition:** The engine returns a structured result for both candidate services, including live/scheduled provenance and a clear no-connection or unavailable-data state.
 
+**Validation completed 27 October 2026:** The Release solution build passes with no warnings or errors, and all 10 journey-engine tests pass. A smoke test loaded Translink's current SEQ schedule (`SEQ_SCH_GTFS.zip`: 17,274 stops, 2,825 routes, 141,441 trips; `Australia/Brisbane`) and parsed the live TripUpdates feed (1,724 trip updates). With a fresh feed snapshot, the planner matched real-time trip IDs to the corresponding current schedule and produced two first-leg 235 options with onward 150 options. Downloaded feed files were temporary and are not in source control. The endpoint and data-format validation draws on Translink's [official open-data page](https://translink.com.au/about-translink/open-data), which publishes these feeds and says authentication is not required.
+
 ### Milestone 2 — Deliver one mobile journey page
 
 - Build the responsive journey page and API response for the first configured journey.
@@ -170,9 +172,10 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 ## 7. Remaining decisions and validation
 
-Milestone 0 is substantially agreed. The remaining product inputs can be supplied when the first journey is configured; they do not prevent beginning the generic engine:
+Milestone 0 is substantially agreed. Remaining product inputs can be supplied when the first journey is configured; they do not block the reusable engine:
 
 - Confirm the actual boarding, interchange-platform, destination stops, and allowed route variants for the first journey.
+- The 27 October 2026 feed smoke test found that the sample stop/route assumptions need a direction/platform check before configuration: current GTFS IDs omit the leading zeroes shown on stop pages; route 235 from Heidelberg stop 15 serves Mater Hill platform 1 (stop 19051), while route 150 toward Honeysuckle Way at Sunflower serves Mater Hill platform 2 (stop 19063) and the direction-specific destination stop 10899. Route 153 was not found between those Mater Hill platforms and that destination in the tested schedule. Confirm the intended boarding/transfer/destination choices when configuring the first journey; these details are not hard-coded in the engine.
 - Set that journey's default approach time and transfer allowance for each platform pair. The passenger can adjust these per request; no values are needed for the reusable engine design.
 - Decide whether to show a “leave by” time. This is optional presentation detail and can be settled during the first mobile page.
 - Azure hosting choice is settled for the first version: Azure Static Web Apps Free with its integrated managed Function API. The user expects roughly 10 requests per day; revisit if measured usage or cost changes that assumption.
