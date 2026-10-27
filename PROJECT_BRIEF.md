@@ -36,7 +36,7 @@ For each configured journey, the link supplies a default starting stage and rema
 6. Estimate arrival at the destination stop, with the same live-versus-scheduled labelling.
 7. For each of the two first-leg candidates, present the primary and backup onward connections in a compact mobile view, including the selected starting point, remaining approach time, route, stop/platform, departure/arrival times, transfer allowance, source status, and last update time.
 
-The initial example uses a four-minute transfer allowance as a configurable starting value. It is not a permanent assumption about every interchange. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
+Use a configurable transfer allowance for each specific arrival-platform to onward-boarding-platform pair, with four minutes as an initial value for a short change such as the Mater Hill example. A longer platform walk, such as changing to a distant platform at a large station, may need a longer default. Show the allowance within the transfer summary and let the passenger adjust it for the current request through a compact inline edit, rather than a separate always-visible settings control. Keep that override local to the current request; do not save it to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
 
 The connection engine should not assume the primary onward bus will operate or remain catchable during busy periods. The backup is the next distinct feasible onward trip after the primary, recalculated from the same first-leg arrival and transfer allowance; if realtime cancellation or skipped-stop data makes a candidate unusable, exclude it and continue to the next eligible service. If no second feasible onward trip exists, show that no backup is currently available.
 
@@ -60,7 +60,7 @@ The canonical request should contain the passenger-facing inputs needed to calcu
 - Starting boarding stop and destination stop.
 - Ordered journey legs, each with its boarding/alighting stop and allowed route numbers (and direction only when needed to disambiguate).
 - Approach time to the first boarding stop.
-- Transfer allowance for each interchange, with a journey-level default where appropriate.
+- Transfer allowance for each configured arrival-platform to onward-boarding-platform pair, with a journey-level default where appropriate.
 - Optional assessment time; if omitted, use the current time in the configured local timezone.
 
 Feed URLs, cache durations, provider freshness thresholds, API request limits, and Azure settings remain server-side configuration. Use concise parameter names and sensible defaults so a journey link does not become a long list of implementation knobs.
@@ -85,6 +85,7 @@ The public site needs no login for the family use case, but a public URL is stil
 - A public, responsive browser experience.
 - Configurable multi-leg journeys and generated or configured quick links.
 - A simple selector for configured journey stages/boarding stops and an editable remaining approach-time value.
+- A compact inline way to adjust the transfer allowance for the current request.
 - Two candidate first-leg services, each with a primary and backup onward connection when available.
 - Clear scheduled/live labels and data freshness.
 - One configured journey working end to end before generalizing to additional journeys.
@@ -153,7 +154,8 @@ AnkoDisplay may remain available as a read-only reference for general project id
 ## 7. Open decisions
 
 - Confirm the physical boarding, transfer, and destination stops and acceptable route variants when ready; stop details can be resolved after the initial structure is in place.
-- Decide whether the four-minute transfer allowance is suitable for each configured interchange.
+- Confirm default transfer allowances for the configured platform pairs; use four minutes only as a starting value for short platform changes.
+- Show each transfer allowance in the itinerary and allow a per-request inline adjustment without adding a permanent settings panel.
 - Confirm each journey's approach time to its first stop and whether the user wants a “leave by” time shown.
 - Confirm the configured start-stage choices and which platform should be selected when a passenger is already at an interchange.
 - Use specific boarding stops/platforms as start-stage choices; default remaining approach time to zero at the selected platform and apply transfer allowance only between journey legs.
