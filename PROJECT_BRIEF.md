@@ -71,9 +71,9 @@ A full URL can carry the complete journey request, allowing a user to bookmark o
 ### Live feed caching and cost controls
 
 - Cache the shared Translink realtime feed on demand. A journey request first checks the cache; only a missing or expired cache entry triggers an upstream fetch.
-- Start with a configurable one-minute freshness interval. Do not run a background poller in the first version solely to refresh the cache.
+- Keep two separate timing rules: (1) a configurable one-minute cache time-to-live measured from the upstream fetch, so requests reuse that payload for at most one minute before a later request triggers a refresh; (2) a configurable three-minute maximum age of the feed's own timestamp for considering its prediction fresh. Evaluate feed age on every request, even when the payload came from cache. Do not use sliding cache expiration, since repeat requests must not make an old feed appear new. Do not run a background poller in the first version solely to refresh the cache.
 - Coalesce simultaneous cache misses so a burst of incoming requests causes at most one upstream fetch per feed/cache interval. Cache TripUpdates for the first release; do not request VehiclePositions unless a later requirement actually needs them.
-- If the upstream feed is unavailable, return a clearly labelled timetable estimate or stale-data state according to the journey rules; do not repeatedly retry the provider for every concurrent request.
+- If the upstream feed is unavailable, return a clearly labelled timetable estimate or stale-data state according to the journey rules; do not repeatedly retry the provider for every concurrent request. A cached response whose source timestamp is older than three minutes is stale even if it was just fetched; do not present it as a fresh live prediction.
 - Apply bounded request rates and validation to the public API, and set a minimum browser refresh interval. Prefer allowing only supported journey parameters/routes rather than arbitrary expensive feed queries.
 - Use Azure budget and anomaly alerts, and document any available automated action to disable or limit the API at a cost threshold. Alerts alone are not a hard spending cap; incoming requests, app execution, and outbound bandwidth may still be billed even when upstream feed calls are cached.
 
@@ -160,7 +160,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Confirm each journey's approach time to its first stop and whether the user wants a “leave by” time shown.
 - Confirm the configured start-stage choices and which platform should be selected when a passenger is already at an interchange.
 - Use specific boarding stops/platforms as start-stage choices; default remaining approach time to zero at the selected platform and apply transfer allowance only between journey legs.
-- Decide the refresh interval and maximum acceptable feed age based on provider data and app usage.
+- Verify the initial one-minute cache TTL and three-minute source-feed age threshold against actual Translink behavior and app usage; keep them as separate server settings.
 - Decide the concise public URL syntax and whether the first release needs both full parameter URLs and short configured quick links; both avoid user accounts, and neither hides journey details from link recipients.
 - Verify the exact Azure hosting option, .NET support, quotas, and likely cost before deployment.
 
