@@ -4,7 +4,7 @@ BusPlanner is a mobile-friendly fixed-journey bus connection planner. The design
 
 ## Current work
 
-Milestone 1 starts with a reusable .NET journey engine in `src/BusPlanner.Engine`:
+Milestone 1 is complete. The reusable .NET journey engine in `src/BusPlanner.Engine`:
 
 - Loads static GTFS ZIP feeds, including stops, routes, trips, stop times, service calendars, calendar exceptions, and exact-time frequency trips.
 - Indexes stop times by boarding stop and trip so configured journey legs can be looked up without scanning the full feed on every calculation.
@@ -12,6 +12,8 @@ Milestone 1 starts with a reusable .NET journey engine in `src/BusPlanner.Engine
 - Calculates up to two catchable first-leg trips and up to two onward alternatives after each transfer buffer, including scheduled/live provenance and no-connection states.
 - Excludes canceled trips and trips that skip a configured boarding or alighting stop; warns on detours and modified service; treats relevant no-service and moved-stop alerts as unavailable.
 - Uses the agency timezone and GTFS service-day times, including times beyond midnight.
+
+Verification includes 10 passing Release tests and a smoke test using Translink's current SEQ static schedule and TripUpdates feed. The feed samples were temporary and are not included in this repository.
 
 The engine is intentionally independent of the web UI, Azure hosting, and journey-specific stop IDs. A web API, cache/fetch layer, and mobile page are later milestone work.
 
