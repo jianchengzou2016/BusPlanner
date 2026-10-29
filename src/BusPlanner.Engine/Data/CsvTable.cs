@@ -4,26 +4,32 @@ namespace BusPlanner.Engine.Data;
 
 internal sealed class CsvTable
 {
-    private CsvTable(string entryName, string[] headers, List<string[]> rows)
+    private CsvTable(string entryName, string[] headers, Dictionary<string, int> columns, List<string[]> rows)
     {
         EntryName = entryName;
         Headers = headers;
+        Columns = columns;
         Rows = rows;
     }
 
     public string EntryName { get; }
     public string[] Headers { get; }
+    public Dictionary<string, int> Columns { get; }
     public List<string[]> Rows { get; }
 
-    public static CsvTable Read(string entryName, TextReader reader)
+    public static CsvTable Read(
+        string entryName,
+        TextReader reader,
+        string? filterColumn = null,
+        IReadOnlySet<string>? allowedValues = null)
     {
-        var records = ParseRecords(reader);
-        if (records.Count == 0)
+        using var records = ParseRecords(reader).GetEnumerator();
+        if (!records.MoveNext())
         {
             throw new GtfsLoadException($"GTFS entry '{entryName}' is empty.");
         }
 
-        var headers = records[0].Select(x => x.Trim()).ToArray();
+        var headers = records.Current.Select(x => x.Trim()).ToArray();
         if (headers.Length == 0 || headers.Any(string.IsNullOrWhiteSpace))
         {
             throw new GtfsLoadException($"GTFS entry '{entryName}' contains an empty column name.");
@@ -34,23 +40,36 @@ internal sealed class CsvTable
             throw new GtfsLoadException($"GTFS entry '{entryName}' contains duplicate column names.");
         }
 
-        for (var i = 1; i < records.Count; i++)
+        var filterIndex = filterColumn is null ? -1 : Array.IndexOf(headers, filterColumn);
+        if (allowedValues is not null && filterIndex < 0)
         {
-            if (records[i].Length != headers.Length)
-            {
-                throw new GtfsLoadException($"GTFS entry '{entryName}', data row {i}: expected {headers.Length} fields but found {records[i].Length}.");
-            }
+            throw new GtfsLoadException($"GTFS entry '{entryName}' is missing filter column '{filterColumn}'.");
         }
 
-        return new CsvTable(entryName, headers, records.Skip(1).ToList());
+        var rows = new List<string[]>();
+        var line = 2;
+        while (records.MoveNext())
+        {
+            var row = records.Current;
+            if (row.Length != headers.Length)
+            {
+                throw new GtfsLoadException($"GTFS entry '{entryName}', data row {line - 1}: expected {headers.Length} fields but found {row.Length}.");
+            }
+
+            if (allowedValues is null || allowedValues.Contains(row[filterIndex].Trim())) rows.Add(row);
+            line++;
+        }
+
+        var columns = headers.Select((name, index) => (name, index))
+            .ToDictionary(x => x.name, x => x.index, StringComparer.Ordinal);
+        return new CsvTable(entryName, headers, columns, rows);
     }
 
     public IEnumerable<CsvRow> EnumerateRows() =>
-        Rows.Select((values, index) => new CsvRow(EntryName, index + 2, Headers, values));
+        Rows.Select((values, index) => new CsvRow(EntryName, index + 2, Columns, values));
 
-    private static List<string[]> ParseRecords(TextReader reader)
+    private static IEnumerable<string[]> ParseRecords(TextReader reader)
     {
-        var records = new List<string[]>();
         var fields = new List<string>();
         var field = new StringBuilder();
         var inQuotes = false;
@@ -70,10 +89,10 @@ internal sealed class CsvTable
                 if (rowHasContent || field.Length > 0 || fields.Count > 0)
                 {
                     fields.Add(field.ToString());
-                    records.Add(fields.ToArray());
+                    yield return fields.ToArray();
                 }
 
-                return records;
+                yield break;
             }
 
             var current = (char)value;
@@ -122,7 +141,7 @@ internal sealed class CsvTable
 
                 fields.Add(field.ToString());
                 field.Clear();
-                records.Add(fields.ToArray());
+                yield return fields.ToArray();
                 fields.Clear();
                 atFieldStart = true;
                 rowHasContent = false;
@@ -142,15 +161,11 @@ internal sealed class CsvTable
     }
 }
 
-internal sealed class CsvRow(string entry, int line, string[] headers, string[] values)
+internal sealed class CsvRow(string entry, int line, IReadOnlyDictionary<string, int> columns, string[] values)
 {
-    private readonly Dictionary<string, int> _columns = headers
-        .Select((name, index) => (name, index))
-        .ToDictionary(x => x.name, x => x.index, StringComparer.Ordinal);
-
     public string GetRequired(string column)
     {
-        if (!_columns.TryGetValue(column, out var index))
+        if (!columns.TryGetValue(column, out var index))
         {
             throw Error($"missing required column '{column}'");
         }
@@ -161,7 +176,7 @@ internal sealed class CsvRow(string entry, int line, string[] headers, string[] 
 
     public string? GetOptional(string column)
     {
-        if (!_columns.TryGetValue(column, out var index))
+        if (!columns.TryGetValue(column, out var index))
         {
             return null;
         }

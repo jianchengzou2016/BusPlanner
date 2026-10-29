@@ -1,9 +1,12 @@
 **/bin/
 **/obj/
+TestResults/
+.dotnet-cli-home/
+restore.log
 .vs/
 .idea/
 *.user
 *.suo
-data/
+/data/
 gtfs*.zip
 local.settings.json

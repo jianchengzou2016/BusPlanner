@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Diagnostics;
 using BusPlanner.Api.Options;
 using BusPlanner.Engine.Data;
 using BusPlanner.Engine.Models;
@@ -8,6 +9,10 @@ using Microsoft.Extensions.Options;
 namespace BusPlanner.Api.Data;
 
 public sealed record RealtimeDataResult(RealtimeSnapshot? Snapshot, bool AlertsAvailable);
+public sealed record ScheduleLoadResult(GtfsSchedule Schedule, double DownloadMs, double ParseMs)
+{
+    public double TotalMs => DownloadMs + ParseMs;
+}
 
 /// <summary>Loads the public schedule once per function instance and caches realtime data on demand.</summary>
 public sealed class TransitDataService(
@@ -19,13 +24,13 @@ public sealed class TransitDataService(
     private readonly GtfsRealtimeParser _realtimeParser = new();
     private readonly SemaphoreSlim _realtimeRefresh = new(1, 1);
     private readonly object _scheduleLock = new();
-    private Task<GtfsSchedule>? _scheduleTask;
+    private Task<ScheduleLoadResult>? _scheduleTask;
     private RealtimeDataResult? _cachedRealtime;
     private DateTimeOffset _realtimeFetchedAt;
 
-    public Task<GtfsSchedule> GetScheduleAsync(CancellationToken cancellationToken)
+    public Task<ScheduleLoadResult> GetScheduleAsync(CancellationToken cancellationToken)
     {
-        Task<GtfsSchedule> task;
+        Task<ScheduleLoadResult> task;
         lock (_scheduleLock)
         {
             _scheduleTask ??= LoadScheduleAsync();
@@ -91,14 +96,23 @@ public sealed class TransitDataService(
         }
     }
 
-    private async Task<GtfsSchedule> LoadScheduleAsync()
+    private async Task<ScheduleLoadResult> LoadScheduleAsync()
     {
         var client = httpClientFactory.CreateClient(nameof(TransitDataService));
+        var timer = Stopwatch.StartNew();
         await using var source = await client.GetStreamAsync(_options.StaticScheduleUrl);
         await using var buffer = new MemoryStream();
         await source.CopyToAsync(buffer);
+        var downloadMs = timer.Elapsed.TotalMilliseconds;
         buffer.Position = 0;
-        return _scheduleLoader.Load(buffer);
+        timer.Restart();
+        var routeShortNames = _options.Journeys.Values
+            .SelectMany(profile => profile.Branches.SelectMany(branch => branch.Legs)
+                .SelectMany(leg => leg.AllowedRouteShortNames))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        routeShortNames.RemoveWhere(string.IsNullOrWhiteSpace);
+        var schedule = _scheduleLoader.Load(buffer, routeShortNames);
+        return new ScheduleLoadResult(schedule, downloadMs, timer.Elapsed.TotalMilliseconds);
     }
 
     private async Task<RealtimeSnapshot> DownloadRealtimeFeedAsync(HttpClient client, string url, CancellationToken cancellationToken)

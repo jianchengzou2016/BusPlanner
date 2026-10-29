@@ -10,12 +10,15 @@ const feedStatusElement = document.querySelector("#feed-status");
 const connectionState = document.querySelector("#connection-state");
 const titleElement = document.querySelector("#journey-title");
 const subtitleElement = document.querySelector("#journey-subtitle");
-
+const performanceElement = document.querySelector("#performance-status");
+const journeyKey = new URLSearchParams(window.location.search).get("journey");
 let approachSetAt = Date.now();
 let approachBaseMinutes = 10;
 let defaultOriginApproachMinutes = 10;
 let firstResponse = true;
+let firstResultElapsedMs = null;
 let refreshInProgress = false;
+let journeyHasTransfers = false;
 
 function selectedApproachMinutes() {
   const elapsed = Math.floor((Date.now() - approachSetAt) / 60_000);
@@ -27,8 +30,9 @@ function showRemainingApproach() {
 }
 
 function syncControls() {
-  const atInterchange = stageInput.value === "interchange";
-  transferControl.hidden = atInterchange;
+  const atInterchange = stageInput.value !== "origin";
+  stageInput.closest(".control-row").hidden = stageInput.options.length <= 1;
+  transferControl.hidden = atInterchange || !journeyHasTransfers;
   approachInput.setAttribute("aria-label", atInterchange ? "Minutes until ready to board at the selected transfer stop" : "Minutes until reaching the first boarding stop");
   refreshNote.textContent = atInterchange
     ? "The time to board counts down while this page is open."
@@ -118,8 +122,16 @@ function renderTrip(branch, optionLabel, depth = 0) {
 
 function renderResults(response) {
   const plan = response.plan;
+  const selectedStage = stageInput.value;
+  stageInput.replaceChildren(new Option("First stop", "origin"));
+  for (const stage of response.availableStartingStages || []) {
+    stageInput.add(new Option(stage.label, stage.key));
+  }
+  if ([...stageInput.options].some(option => option.value === selectedStage)) stageInput.value = selectedStage;
+  journeyHasTransfers = response.hasTransfers;
+  syncControls();
   titleElement.textContent = response.journeyLabel || "BusPlanner";
-  subtitleElement.textContent = response.startingStage === "interchange"
+  subtitleElement.textContent = response.startingStage !== "origin"
     ? `Starting from ${response.startingStopName} · ${response.approachMinutes} min until ready to board`
     : `Starting from ${response.startingStopName} · ${response.approachMinutes} min to reach the stop`;
 
@@ -174,14 +186,18 @@ async function refreshJourney() {
   connectionState.textContent = "Updating…";
   connectionState.dataset.state = "loading";
   const requestedStage = stageInput.value;
+  const isFirstResponse = firstResponse;
   try {
     const params = new URLSearchParams({
       stage: requestedStage,
       transferMinutes: String(Math.max(0, Math.min(120, Number.parseInt(transferInput.value, 10) || 0)))
     });
+    if (journeyKey) params.set("journey", journeyKey);
     if (!firstResponse) params.set("approachMinutes", String(selectedApproachMinutes()));
+    const apiStartedAt = performance.now();
     const response = await fetch(`/api/journey?${params.toString()}`, { cache: "no-store" });
     const data = await response.json();
+    const apiElapsedMs = performance.now() - apiStartedAt;
     if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
     if (stageInput.value !== requestedStage) {
       window.setTimeout(refreshJourney, 0);
@@ -195,7 +211,15 @@ async function refreshJourney() {
       showRemainingApproach();
       firstResponse = false;
     }
+    const renderStartedAt = performance.now();
     renderResults(data);
+    const renderElapsedMs = performance.now() - renderStartedAt;
+    if (isFirstResponse && firstResultElapsedMs === null) firstResultElapsedMs = performance.now();
+    const initialLoadText = firstResultElapsedMs === null
+      ? "First result: waiting"
+      : `First result: ${(firstResultElapsedMs / 1000).toFixed(2)} s`;
+    performanceElement.textContent = `${initialLoadText} · Latest API round trip: ${Math.round(apiElapsedMs)} ms · Render: ${Math.round(renderElapsedMs)} ms`;
+    performanceElement.dataset.withinTarget = String(firstResultElapsedMs !== null && firstResultElapsedMs < 2000);
     connectionState.textContent = "Updated just now";
     connectionState.dataset.state = "ready";
   } catch (error) {
@@ -213,7 +237,7 @@ async function refreshJourney() {
 }
 
 stageInput.addEventListener("change", () => {
-  approachBaseMinutes = stageInput.value === "interchange" ? 0 : defaultOriginApproachMinutes;
+  approachBaseMinutes = stageInput.value !== "origin" ? 0 : defaultOriginApproachMinutes;
   approachSetAt = Date.now();
   showRemainingApproach();
   syncControls();

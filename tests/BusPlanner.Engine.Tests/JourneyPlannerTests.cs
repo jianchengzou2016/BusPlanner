@@ -192,6 +192,19 @@ public sealed class JourneyPlannerTests
     }
 
     [Fact]
+    public void Plan_DoesNotOfferDeparturesAfterTheCurrentLocalCalendarDayEnds()
+    {
+        var planner = new JourneyPlanner(LoadSchedule());
+        var lateEvening = new DateTimeOffset(2026, 10, 27, 23, 50, 0, TimeSpan.FromHours(10));
+        var request = CreateRequest() with { Now = lateEvening, RemainingApproachTime = TimeSpan.Zero };
+
+        var result = planner.Plan(request);
+
+        Assert.Empty(result.FirstLegOptions);
+        Assert.Contains(result.Notices, notice => notice.Contains("No eligible first-leg service", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Schedule_AppliesCalendarDateExceptionsOverTheWeeklyCalendar()
     {
         var schedule = LoadSchedule(includeExceptions: true);

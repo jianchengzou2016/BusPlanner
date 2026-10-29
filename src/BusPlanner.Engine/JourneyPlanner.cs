@@ -96,10 +96,13 @@ public sealed class JourneyPlanner(
         List<string> notices)
     {
         var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(notBefore, schedule.AgencyTimeZone).DateTime);
+        var endOfLocalDay = GtfsSchedule.ToInstant(localDate.AddDays(1), TimeSpan.Zero, schedule.AgencyTimeZone);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var candidates = new List<Candidate>();
 
-        foreach (var serviceDate in new[] { localDate.AddDays(-1), localDate, localDate.AddDays(1), localDate.AddDays(2) })
+        // Include yesterday's service date for trips that continue past midnight, but never
+        // offer a departure whose local departure instant falls on the following calendar day.
+        foreach (var serviceDate in new[] { localDate.AddDays(-1), localDate })
         {
             foreach (var boardStopTime in schedule.GetDeparturesAtStop(leg.BoardStopId))
             {
@@ -203,7 +206,9 @@ public sealed class JourneyPlanner(
 
                     var estimatedDeparture = departurePrediction.Time ?? scheduledDeparture;
                     var estimatedArrival = arrivalPrediction.Time ?? scheduledArrival;
-                    if (estimatedArrival < estimatedDeparture || estimatedDeparture < notBefore)
+                    if (estimatedArrival < estimatedDeparture
+                        || estimatedDeparture < notBefore
+                        || estimatedDeparture >= endOfLocalDay)
                     {
                         continue;
                     }

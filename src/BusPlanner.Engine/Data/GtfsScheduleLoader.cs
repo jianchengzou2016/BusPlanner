@@ -7,7 +7,7 @@ namespace BusPlanner.Engine.Data;
 
 public sealed class GtfsScheduleLoader
 {
-    public GtfsSchedule Load(Stream zipStream)
+    public GtfsSchedule Load(Stream zipStream, IReadOnlySet<string>? routeShortNames = null)
     {
         ArgumentNullException.ThrowIfNull(zipStream);
         using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: true);
@@ -41,6 +41,10 @@ public sealed class GtfsScheduleLoader
                 row.GetOptional("agency_id")))
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
 
+        var routeIds = routeShortNames is { Count: > 0 }
+            ? routes.Values.Where(x => routeShortNames.Contains(x.ShortName ?? string.Empty)).Select(x => x.Id).ToHashSet(StringComparer.Ordinal)
+            : null;
+
         var stops = ReadTable(archive, "stops.txt", required: true)!.EnumerateRows()
             .Select(row => new TransitStop(
                 row.GetRequired("stop_id"),
@@ -49,7 +53,7 @@ public sealed class GtfsScheduleLoader
                 row.GetOptional("stop_code")))
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
 
-        var trips = ReadTable(archive, "trips.txt", required: true)!.EnumerateRows()
+        var trips = ReadTable(archive, "trips.txt", required: true, routeIds is null ? null : "route_id", routeIds)!.EnumerateRows()
             .Select(row => new TransitTrip(
                 row.GetRequired("trip_id"),
                 row.GetRequired("route_id"),
@@ -66,7 +70,8 @@ public sealed class GtfsScheduleLoader
             }
         }
 
-        var stopTimes = ReadTable(archive, "stop_times.txt", required: true)!.EnumerateRows()
+        var tripIds = trips.Keys.ToHashSet(StringComparer.Ordinal);
+        var stopTimes = ReadTable(archive, "stop_times.txt", required: true, routeIds is null ? null : "trip_id", routeIds is null ? null : tripIds)!.EnumerateRows()
             .Select(row => new TransitStopTime(
                 row.GetRequired("trip_id"),
                 row.GetRequired("stop_id"),
@@ -110,7 +115,7 @@ public sealed class GtfsScheduleLoader
             throw new GtfsLoadException("The feed must contain calendar.txt, calendar_dates.txt, or both.");
         }
 
-        var frequencies = ReadTable(archive, "frequencies.txt", required: false)?.EnumerateRows()
+        var frequencies = ReadTable(archive, "frequencies.txt", required: false, routeIds is null ? null : "trip_id", routeIds is null ? null : tripIds)?.EnumerateRows()
             .Select(row =>
             {
                 var start = row.GetOptionalGtfsTime("start_time") ?? throw row.Error("column 'start_time' is required");
@@ -167,7 +172,12 @@ public sealed class GtfsScheduleLoader
         }
     }
 
-    private static CsvTable? ReadTable(ZipArchive archive, string fileName, bool required)
+    private static CsvTable? ReadTable(
+        ZipArchive archive,
+        string fileName,
+        bool required,
+        string? filterColumn = null,
+        IReadOnlySet<string>? allowedValues = null)
     {
         var entry = archive.Entries.FirstOrDefault(x =>
             string.Equals(Path.GetFileName(x.FullName), fileName, StringComparison.OrdinalIgnoreCase));
@@ -183,7 +193,7 @@ public sealed class GtfsScheduleLoader
 
         using var stream = entry.Open();
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        return CsvTable.Read(entry.FullName, reader);
+        return CsvTable.Read(entry.FullName, reader, filterColumn, allowedValues);
     }
 
     private static void ValidateStopTimeSequences(IEnumerable<TransitStopTime> stopTimes)
