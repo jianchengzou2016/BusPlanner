@@ -10,3 +10,4 @@ restore.log
 /data/
 gtfs*.zip
 local.settings.json
+appsettings.Development.json

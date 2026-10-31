@@ -18,7 +18,7 @@ The engine in `src/BusPlanner.Engine`:
 
 The Release build succeeds with no warnings or errors, and all 13 engine tests pass. The schedule loader streams GTFS records and retains only configured routes to reduce download parsing work. API responses include server timing for schedule wait/cache load/download/parse, realtime load, planning, and total server time; the page also reports client request and render timing. The schedule is loaded once per Functions instance; realtime feeds are refreshed on demand and cached for 60 seconds. Feed samples and local journey settings are excluded from source control.
 
-Local Function settings are created from `src/BusPlanner.Api/local.settings.example.json`; `local.settings.json` is ignored by Git and should contain the actual stop codes and labels. Journey configuration is grouped by named profile, then branch (an alternative path), then ordered legs. Each leg has its own boarding and alighting stop and can allow one or more route short names. Put routes that serve the same leg/stops as alternatives in the same `AllowedRouteShortNames` list; use a separate branch when the routes follow different paths or require different transfers. For example, the sample BSHS profile has a direct route 150 branch and an M1 branch whose onward leg accepts either route 150 or 153.
+`local.settings.json` remains necessary for Azure Functions Core Tools, which reads host values such as `AzureWebJobsStorage` and `FUNCTIONS_WORKER_RUNTIME`. Copy it from `src/BusPlanner.Api/local.settings.example.json`; keep journey configuration out of it. Journey profiles and BusPlanner runtime settings live in structured `src/BusPlanner.Api/appsettings.Development.json`, which is ignored by Git and should contain actual stop codes and labels. Copy the tracked `appsettings.example.json` as a starting point. Journey configuration is grouped by named profile, then branch (an alternative path), then ordered legs. Each leg has its own boarding and alighting stop and can allow one or more route short names. Put routes that serve the same leg/stops as alternatives in the same `AllowedRouteShortNames` list; use a separate branch when the routes follow different paths or require different transfers. For example, the sample BSHS profile has a direct route 150 branch and an M1 branch whose onward leg accepts either route 150 or 153.
 
 Transfer starting points are derived from later legs' boarding stops, so duplicate interchange configuration is not needed. The API accepts a profile's stable `QuickLink`, configuration key, or label through the `journey` query parameter and supports `stage`, `approachMinutes`, and `transferMinutes` overrides. Public stop codes are resolved through `stop_code` or unique leading-zero normalization of the feed stop ID. Departure searches stop at the end of the current local calendar day and do not offer tomorrow's first service. If the configured services have ended for the day, the planner reports no remaining service.
 
@@ -33,7 +33,7 @@ https://<your-site>/?journey=bshs-home
 
 The `?` begins the URL query string; `journey` selects the configured profile. Quick links are public convenience URLs, not private or access-controlled links. Use generic labels if you do not want a person's name shown on the page.
 
-To add another journey, add settings under `BusPlanner__Journeys__<ProfileKey>__...` in `src/BusPlanner.Api/local.settings.json`:
+To add another journey, add a profile object under `BusPlanner.Journeys` in `src/BusPlanner.Api/appsettings.Development.json`:
 
 1. Set `Label` to the title displayed in the page and `QuickLink` to a unique, memorable slug using lowercase letters, digits, and hyphens (for example, `jessica-home`).
 2. Set `OriginStopCode`, `DestinationStopCode`, and the approach/transfer defaults.
@@ -41,7 +41,34 @@ To add another journey, add settings under `BusPlanner__Journeys__<ProfileKey>__
 4. Use the same leg's allowed-route list for services that share that leg's stops and direction. Add a separate branch when a route follows a different path or needs different transfers.
 5. Open `/?journey=<QuickLink>` to use and share the new profile. Restart the local Functions host after changing settings.
 
-The profile key is an internal configuration name; `QuickLink` is the stable value intended for shared URLs. The API continues to accept profile keys and labels for compatibility. Keep real stop codes and personal labels in ignored `local.settings.json`; the tracked example uses blank stop-code placeholders.
+The profile key is an internal configuration name; `QuickLink` is the stable value intended for shared URLs. The API continues to accept profile keys and labels for compatibility. Keep real stop codes and personal labels in ignored `appsettings.Development.json`; the tracked example uses blank stop-code placeholders.
+
+### Azure Static Web Apps journey settings
+
+Azure Static Web Apps limits each API application-setting name to 64 characters. Select the Static Web App's **Production** environment and add one setting named `BusPlanner__Journeys`. Its value is the JSON object under `BusPlanner.Journeys` in your private production configuration. Paste the object as JSON text; whitespace and line breaks are valid. The setting name is short, and every profile uses the same shape as `JourneyProfileOptions`:
+
+```json
+{
+  "Churchie2HomeJourney": {
+    "Label": "Churchie -> Home",
+    "QuickLink": "churchie-home",
+    "OriginStopCode": "010145",
+    "DestinationStopCode": "010711",
+    "DefaultApproachMinutes": 10,
+    "DefaultTransferMinutes": 4,
+    "Branches": [
+      {
+        "Legs": [
+          { "BoardStopCode": "010145", "AlightStopCode": "019051", "AllowedRouteShortNames": ["235"] },
+          { "BoardStopCode": "019063", "AlightStopCode": "010711", "AllowedRouteShortNames": ["150"] }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Include all profiles (Churchie, Work, BSHS, and any others) in this single JSON object. Locally, store it under `BusPlanner.Journeys` in `appsettings.Development.json`; in Azure, `BusPlanner__Journeys` carries that same JSON shape as text. Keep scalar settings such as `BusPlanner__RealtimeCacheSeconds` and `BusPlanner__MaximumRealtimeAgeSeconds` as separate app settings. Development and production settings files are not committed; the example file is safe to commit with blank stop-code placeholders.
 
 Chinese-language UI support, including translated controls and a language selector, is a later enhancement and is not part of the initial Azure deployment milestone.
 
@@ -71,7 +98,7 @@ npx --yes @azure/static-web-apps-cli start .\src\BusPlanner.Web --api-devserver-
 
 Open the local web URL printed by the CLI (usually `http://localhost:4280`). Keep both processes running while using the page. The UI uses relative `/api/journey` requests, so the CLI proxy is needed for local UI-to-API communication; opening the API URL directly only shows the API response.
 
-To try a configured profile, open `http://localhost:4280/?journey=work-home` (or use the profile key/label configured in local settings). The sample Work → Home profile evaluates the next two departures across routes 153 and 138: route 153 is direct, while route 138 uses a walking transfer to route 150. The sample BSHS profile shows alternatives sharing the same leg: routes 150 and 153 are listed under one leg's allowed route names. Replace the blank stop codes in the example with valid local stop codes before using those sample profiles. The local profile values are in ignored `src/BusPlanner.Api/local.settings.json` and are not published in the repository. Restart `func start` after changing them.
+To try a configured profile, open `http://localhost:4280/?journey=work-home` (or use the profile key/label configured in `appsettings.Development.json`). The sample Work → Home profile evaluates the next two departures across routes 153 and 138: route 153 is direct, while route 138 uses a walking transfer to route 150. The sample BSHS profile shows alternatives sharing the same leg: routes 150 and 153 are listed under one leg's allowed route names. Replace the blank stop codes in the example with valid local stop codes before using those sample profiles. Journey profiles are in ignored `src/BusPlanner.Api/appsettings.Development.json`; restart `func start` after changing them.
 
 To try the page on a phone or tablet connected to the same Wi-Fi, open the web server's URL using the computer's LAN IP address and port (for example, `http://192.168.1.20:4280`). Windows Firewall may prompt to allow the CLI to accept local network connections.
 
