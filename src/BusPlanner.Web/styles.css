@@ -40,6 +40,9 @@ button, input, select { font: inherit; }
 }
 
 .site-header { justify-content: space-between; min-height: 42px; }
+.header-tools { display: flex; align-items: center; gap: 8px; }
+.language-label { color: var(--muted); font-size: .75rem; }
+.language-select { width: auto; min-height: 34px; padding: 0 24px 0 8px; font-size: .78rem; }
 .brand { gap: 10px; color: var(--green-dark); font-weight: 750; text-decoration: none; }
 .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--green); color: white; }
 .connection-state { color: var(--muted); font-size: .78rem; }
@@ -108,6 +111,9 @@ h2 { margin: 0; font-size: 1.25rem; letter-spacing: -.02em; }
 .site-footer a { color: var(--green); }
 
 @media (max-width: 480px) {
+  .site-header { align-items: flex-start; gap: 8px; }
+  .header-tools { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .connection-state { width: 100%; text-align: right; }
   .page-shell { width: min(100% - 24px, 760px); }
   .intro { padding-top: 28px; }
   .controls { padding: 7px 13px; }

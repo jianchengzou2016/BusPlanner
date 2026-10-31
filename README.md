@@ -4,7 +4,7 @@ BusPlanner is a mobile-friendly fixed-journey bus connection planner. The design
 
 ## Current work
 
-Milestones 0–3 are complete. The .NET 10 isolated Function API and responsive static page are implemented in `src/BusPlanner.Api` and `src/BusPlanner.Web`. Azure deployment and operations planning are now in discussion.
+Milestones 0–3 are implemented. The .NET 10 isolated Function API and responsive static page are in `src/BusPlanner.Api` and `src/BusPlanner.Web`. Azure Static Web Apps deployment is in progress.
 
 The engine in `src/BusPlanner.Engine`:
 
@@ -37,15 +37,17 @@ To add another journey, add a profile object under `BusPlanner.Journeys` in `src
 
 1. Set `Label` to the title displayed in the page and `QuickLink` to a unique, memorable slug using lowercase letters, digits, and hyphens (for example, `jessica-home`).
 2. Set `OriginStopCode`, `DestinationStopCode`, and the approach/transfer defaults.
-3. Add each alternative path under `Branches__<branch index>`. Within each branch, add ordered `Legs__<leg index>` with `BoardStopCode`, `AlightStopCode`, and one or more `AllowedRouteShortNames__<index>` values.
+3. Add each alternative path to the `Branches` array. Within each branch, add ordered `Legs` with `BoardStopCode`, `AlightStopCode`, and one or more `AllowedRouteShortNames` values.
 4. Use the same leg's allowed-route list for services that share that leg's stops and direction. Add a separate branch when a route follows a different path or needs different transfers.
 5. Open `/?journey=<QuickLink>` to use and share the new profile. Restart the local Functions host after changing settings.
+
+To show a return-trip button beside a profile title, set that profile's `ReturnJourneyQuickLink` to the other profile's `QuickLink`. Configure the return profile separately with its own stops, route directions, branches, and legs. The button appears only when the referenced quick link resolves to a configured profile. For example, the BSHS → Home profile can point to `home-bshs`, and the Home → BSHS profile uses `"QuickLink": "home-bshs"`.
 
 The profile key is an internal configuration name; `QuickLink` is the stable value intended for shared URLs. The API continues to accept profile keys and labels for compatibility. Keep real stop codes and personal labels in ignored `appsettings.Development.json`; the tracked example uses blank stop-code placeholders.
 
 ### Azure Static Web Apps journey settings
 
-Azure Static Web Apps limits each API application-setting name to 64 characters. Select the Static Web App's **Production** environment and add one setting named `BusPlanner__Journeys`. Its value is the JSON object under `BusPlanner.Journeys` in your private production configuration. Paste the object as JSON text; whitespace and line breaks are valid. The setting name is short, and every profile uses the same shape as `JourneyProfileOptions`:
+Azure Static Web Apps limits API application-setting names to 64 characters. It does not provide a file-upload step for `appsettings.Development.json`. Instead, use that file as your source: copy the JSON object under `BusPlanner.Journeys`, then in the Static Web App open **Settings → Environment variables**, select **Production**, add `BusPlanner__Journeys`, and paste that object as its value. The value must start and end with braces and contain profile keys directly; do not include the outer `BusPlanner` object or wrap the entire value in quotation marks. Whitespace and line breaks are fine. For example:
 
 ```json
 {
@@ -68,9 +70,11 @@ Azure Static Web Apps limits each API application-setting name to 64 characters.
 }
 ```
 
-Include all profiles (Churchie, Work, BSHS, and any others) in this single JSON object. Locally, store it under `BusPlanner.Journeys` in `appsettings.Development.json`; in Azure, `BusPlanner__Journeys` carries that same JSON shape as text. Keep scalar settings such as `BusPlanner__RealtimeCacheSeconds` and `BusPlanner__MaximumRealtimeAgeSeconds` as separate app settings. Development and production settings files are not committed; the example file is safe to commit with blank stop-code placeholders.
+Include all profiles (Churchie, Work, BSHS, and any return profiles) in this single JSON object. Locally, store it under `BusPlanner.Journeys` in `appsettings.Development.json`; Azure receives the same journey object as the value of `BusPlanner__Journeys`. Add scalar settings such as `BusPlanner__RealtimeCacheSeconds` and `BusPlanner__MaximumRealtimeAgeSeconds` separately if they differ from defaults. `appsettings.Development.json` is ignored by Git; `appsettings.example.json` is the tracked template with blank stop-code placeholders. After saving environment variables, allow the API to restart, then open the Production site and check the journey response.
 
-Chinese-language UI support, including translated controls and a language selector, is a later enhancement and is not part of the initial Azure deployment milestone.
+The web UI supports English and Simplified Chinese (Mandarin text) through the language selector in the header. **System** follows the browser/OS primary language: Chinese selects Chinese, and all other languages select English. A manual English/Chinese selection is remembered in that browser. The URL can override both with `lang=en` or `lang=zh`, for example `/?journey=home-brownsplain&lang=zh`; return-trip links preserve an explicit language choice. Journey titles translate known terms such as Home → 家 and BrownsPlain → 布朗平原; configured labels without a known translation remain as entered. Common configured stops have Chinese display names, with official English names retained where useful for identification.
+
+Page/API timing metrics are hidden during normal use. To show them for diagnostics, add `debug=1` to the URL, for example `/?journey=work-home&debug=1`.
 
 ## Toolchain
 

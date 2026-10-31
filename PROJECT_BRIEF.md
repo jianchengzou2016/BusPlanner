@@ -1,6 +1,6 @@
 # BusPlanner — Design Requirements and Milestones
 
-**Status:** Milestones 0–3 — complete; Milestone 4 — planning
+**Status:** Milestones 0–3 — implementation complete; Milestone 4 — Azure deployment in progress
 **Date:** 29 October 2026
 
 ## 1. Product goal
@@ -9,7 +9,7 @@ BusPlanner is a mobile-friendly public website that helps a passenger follow a k
 
 > If I take this bus, when should I reach the interchange, which connecting bus can I catch after allowing time to change platforms, and when should I arrive at my destination?
 
-Journeys are configured as alternatives (branches), each containing ordered legs. Each leg has a boarding stop, alighting stop, and one or more allowed route short names. Route alternatives that use the same leg and stops belong in the same leg's allowed-route list; a separate branch is for a different path or transfer pattern. Actual stops and labels are kept in ignored local settings.
+Journeys are configured as alternatives (branches), each containing ordered legs. Each leg has a boarding stop, alighting stop, and one or more allowed route short names. Route alternatives that use the same leg and stops belong in the same leg's allowed-route list; a separate branch is for a different path or transfer pattern. Actual stops and labels are kept in ignored `appsettings.Development.json` for local development and in Azure Static Web Apps Production environment settings.
 
 ## 2. Product principles
 
@@ -39,7 +39,7 @@ For each configured journey, the link supplies a default starting stage and rema
 6. Estimate arrival at the destination stop, with the same live-versus-scheduled labelling.
 7. For each of the two first-leg candidates, present the primary and backup onward connections in a compact mobile view, including the selected starting point, remaining approach time, route, stop/platform, departure/arrival times, transfer allowance, source status, and last update time.
 
-Use a configurable transfer allowance for each specific arrival-platform to onward-boarding-platform pair, with four minutes as an initial value for an ordinary short transfer. A longer platform walk, such as changing to a distant platform at a large station, may need a longer default. Show the allowance within the transfer summary and let the passenger adjust it for the current request through a compact inline edit, rather than a separate always-visible settings control. Keep that override local to the current request; do not save it to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
+Current implementation uses one journey-wide `DefaultTransferMinutes` value and one request-level `transferMinutes` override, applied uniformly to each transfer in that journey. This is sufficient for the currently configured profiles, which have at most one transfer per branch. If a future journey has multiple transfers requiring different walking allowances, extend the profile and request model to configure an allowance per arrival-platform/onward-boarding-platform pair. Four minutes is an initial value for an ordinary short transfer; a longer platform walk may need more. Keep request overrides in the current browser session and do not save them to a user profile. If no feasible onward bus is found, say so clearly rather than implying a connection exists.
 
 The connection engine should not assume the primary onward bus will operate or remain catchable during busy periods. The backup is the next distinct feasible onward trip after the primary, recalculated from the same first-leg arrival and transfer allowance; if realtime cancellation or skipped-stop data makes a candidate unusable, exclude it and continue to the next eligible service. If no second feasible onward trip exists, show that no backup is currently available. Fresh stop-level arrival/departure predictions are the primary evidence for current conditions. Raw vehicle-position data is not used to derive arrival times in the first release; a vehicle position by itself must not be presented as a precise arrival time.
 
@@ -121,9 +121,9 @@ The page should refresh its journey result automatically every 60 seconds and pr
 - QLDTraffic road incident analysis, traffic-based delay inference, and unrelated weather/display features.
 - A native mobile app or mandatory progressive-web-app installation.
 
-### Later enhancement
+### Localization
 
-- Add Chinese-language UI support, including a visible language selector and translated interface text. Keep this outside Milestones 0–4 so it does not block the first hosted release. Journey labels may remain user-configured; a later localization pass can decide whether configured labels should also have translations.
+- Implemented: the web UI has a System / English / Simplified Chinese selector. System follows the browser/OS primary language: Chinese selects Chinese, and all other languages select English. Manual choices persist in the browser. `?lang=en` and `?lang=zh` provide explicit URL overrides, and return-trip links preserve them. Known journey-title terms (including Home → 家 and BrownsPlain → 布朗平原) and common configured stops are translated; unknown configured labels remain as entered.
 
 AnkoDisplay may remain available as a read-only reference for general project ideas. BusPlanner’s implementation and files belong only in the BusPlanner workspace.
 
@@ -158,7 +158,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 - Make source freshness, scheduled fallbacks, and no-connection states understandable at a glance.
 - Keep configuration out of public source when it contains personal labels or private deployment settings.
 
-**Implementation complete and locally validated 29 October 2026:** The .NET 10 isolated Function API and responsive static page are in place. The API supports multiple configured profiles, branches, and legs; later-leg boarding stops become selectable starting stages. It returns the next two eligible first-leg services across configured branches and calculates onward options for each. A leg may accept multiple route names when those services share the same stops and direction (the configured BSHS M1 onward leg accepts routes 150 and 153 as alternatives). Branches remain distinct where paths or transfer patterns differ, as in the Work → Home direct 153 and 138-then-150 paths. The UI shows the editable Interchange time control when the profile contains transfers and hides it for a direct path or when starting at a later stage. The engine stops searching at the end of the current local calendar day and does not display tomorrow's first departure. Page timing and server timing are exposed for local performance diagnosis. The page was checked at 320, 390, and 768 pixel widths with no horizontal overflow. Actual stop codes and journey labels remain in ignored local settings.
+**Implementation complete and locally validated 29 October 2026:** The .NET 10 isolated Function API and responsive static page are in place. The API supports multiple configured profiles, branches, and legs; later-leg boarding stops become selectable starting stages. It returns the next two eligible first-leg services across configured branches and calculates onward options for each. A leg may accept multiple route names when those services share the same stops and direction (the configured BSHS M1 onward leg accepts routes 150 and 153 as alternatives). Branches remain distinct where paths or transfer patterns differ, as in the Work → Home direct 153 and 138-then-150 paths. The UI shows the editable Interchange time control when the profile contains transfers and hides it for a direct path or when starting at a later stage. The engine stops searching at the end of the current local calendar day and does not display tomorrow's first departure. Page and server timing metrics are available with `?debug=1` and hidden during normal use. The page was checked at 320, 390, and 768 pixel widths with no horizontal overflow. Actual stop codes and journey labels remain in ignored local settings.
 
 **Exit condition:** On a phone-sized browser, the configured journey shows a complete itinerary when the schedule supports one, or a clear no-connection state when it does not. Times and live-versus-scheduled sources are represented honestly.
 
@@ -170,7 +170,7 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 **Exit condition:** Each intended journey opens directly from its link and the link’s privacy implications are understood.
 
-**Implementation complete 29 October 2026:** Each profile now has a stable `QuickLink` slug independent of its internal configuration key and display label. The API maps `journey=<slug>` to its configured profile and continues to accept profile keys and labels. Shared URLs use the standard `/?journey=<slug>` form (for example, `/?journey=churchie-home` and `/?journey=bshs-home`). The README documents the URL convention and the steps for adding a profile, its slug, branches, and legs. The example settings show the three journey patterns with placeholder stop codes; real stop codes and personal labels remain in ignored local settings.
+**Implementation complete 29 October 2026:** Each profile now has a stable `QuickLink` slug independent of its internal configuration key and display label. The API maps `journey=<slug>` to its configured profile and continues to accept profile keys and labels. Shared URLs use the standard `/?journey=<slug>` form (for example, `/?journey=churchie-home` and `/?journey=bshs-home`). The README documents the URL convention and profile setup. The UI also supports an optional return-profile shortcut configured with `ReturnJourneyQuickLink`; the return journey has its own profile. Local settings use structured JSON in ignored `appsettings.Development.json`; the tracked example uses placeholder stop codes.
 
 ### Milestone 4 — Deploy and operate on Azure
 
@@ -184,16 +184,16 @@ AnkoDisplay may remain available as a read-only reference for general project id
 
 ## 7. Remaining decisions and validation
 
-Milestone 0 inputs have been supplied for the configured journeys. Public stop codes are resolved through GTFS `stop_code` or a unique leading-zero-normalized match to the internal `stop_id`. Current profile defaults and exact stop codes are in ignored local settings, not tracked source. The Work → Home branches represent route 153 direct and route 138 followed by route 150. The BSHS profile has a direct route 150 branch and an M1 branch whose onward leg allows routes 150 and 153 at the same configured stops; those routes are alternatives on one leg, not separate transfers.
+Milestone 0 inputs have been supplied for the configured journeys. Public stop codes are resolved through GTFS `stop_code` or a unique leading-zero-normalized match to the internal `stop_id`. Current profile defaults and exact stop codes are in ignored local `appsettings.Development.json`, not tracked source. The Work → Home branches represent route 153 direct and route 138 followed by route 150. The BSHS profile has a direct route 150 branch and an M1 branch whose onward leg allows routes 150 and 153 at the same configured stops; those routes are alternatives on one leg, not separate transfers.
 
 - If no remaining service exists before the end of the local calendar day, the API returns no service for the day rather than tomorrow's first departure.
 - Transfer starting choices are derived from the boarding stops of later configured legs; no separate interchange starting-stop or allowed-route setting is required.
 - Decide whether to show a “leave by” time. This is optional presentation detail and can be settled during the first mobile page.
-- Initial hosting recommendation: Azure Static Web Apps Free with its managed Function API, which supports the app's .NET 10 isolated runtime. Confirm this plan's personal-project terms and no-SLA limitations against the intended family use. The user expects roughly 10 requests per day; revisit if measured usage or cost changes that assumption.
+- Hosting is Azure Static Web Apps with its managed Function API under the user's Pay-As-You-Go subscription. Azure for Students did not permit any of the Static Web Apps managed API regions. Revisit costs after deployment; expected family use is roughly 10 requests per day.
 - Visual Studio monthly Azure credits are a development/test benefit, not a production budget. Check the subscriber's benefit tier and account ownership before deployment; if this remains an always-available live service, prefer an eligible personal-use Free plan or a separately paid production subscription rather than relying on the Visual Studio credit.
 - Validate the one-minute cache TTL and three-minute source-age policy against the real feed during implementation. These are starting settings, not a Milestone 0 blocker.
 
-The journey URL approach is implemented: `journey` selects the profile by its stable quick-link slug, and `stage`, `approachMinutes`, and `transferMinutes` can override the current calculation. Starting-stage selection, countdown behavior, inline transfer adjustment, 60-second browser refresh, no phone GPS, and two onward options are settled. Milestone 3 does not include a profile editor or server-side link shortening; adding a profile remains a local configuration change.
+The journey URL approach is implemented: `journey` selects the profile by its stable quick-link slug, and `stage`, `approachMinutes`, and `transferMinutes` can override the current calculation. Starting-stage selection, countdown behavior, inline transfer adjustment, 60-second browser refresh, no phone GPS, and two onward options are settled. Milestone 3 does not include a profile editor or server-side link shortening; adding a profile remains a configuration change. Return-trip shortcuts require a separately configured reverse profile.
 
 ## 8. Acceptance summary for the first release
 

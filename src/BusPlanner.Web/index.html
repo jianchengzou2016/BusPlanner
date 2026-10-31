@@ -16,44 +16,53 @@
         <span class="brand-mark" aria-hidden="true">B</span>
         <span>BusPlanner</span>
       </a>
-      <span id="connection-state" class="connection-state">Preparing journey…</span>
+      <div class="header-tools">
+        <label class="language-label" for="language-select" data-i18n="language">Language</label>
+        <select id="language-select" class="language-select" aria-label="Language">
+          <option value="system" data-i18n="system">System</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+        </select>
+        <span id="connection-state" class="connection-state">Preparing journey…</span>
+      </div>
     </header>
 
     <section class="intro" aria-labelledby="journey-title">
-      <p class="eyebrow">Your connection, at a glance</p>
+      <p class="eyebrow" data-i18n="eyebrow">Your connection, at a glance</p>
       <div class="journey-title-row">
-        <h1 id="journey-title">Your journey</h1>
+        <h1 id="journey-title" data-i18n="yourJourney">Your journey</h1>
         <a id="return-journey-link" class="return-journey-link" hidden></a>
       </div>
-      <p id="journey-subtitle" class="subtitle">Checking the next buses and the transfer.</p>
+      <p id="journey-subtitle" class="subtitle" data-i18n="checking">Checking the next buses and the transfer.</p>
     </section>
 
-    <section class="controls card" aria-label="Journey adjustments">
+    <section class="controls card" aria-label="Journey adjustments" data-i18n-aria="journeyAdjustments">
       <div class="control-row">
-        <label for="stage">I’m starting</label>
+        <label for="stage" data-i18n="starting">I’m starting</label>
         <select id="stage" name="stage">
-          <option value="origin">First stop</option>
-          <option value="interchange">Transfer stop</option>
+          <option value="origin" data-i18n="firstStop">First stop</option>
+          <option value="interchange" data-i18n="transferStop">Transfer stop</option>
         </select>
       </div>
       <div class="control-row">
-        <label for="approach-minutes">Time until I can board</label>
+        <label for="approach-minutes" data-i18n="approachLabel">Time until I can board</label>
         <div class="number-control">
           <input id="approach-minutes" name="approachMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="10">
-          <span>min</span>
+          <span data-i18n="minutes">min</span>
         </div>
       </div>
       <div id="transfer-control" class="control-row transfer-control">
-        <label for="transfer-minutes">Interchange time</label>
+        <label for="transfer-minutes" data-i18n="interchangeTime">Interchange time</label>
         <div class="number-control">
           <input id="transfer-minutes" name="transferMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="4">
-          <span>min</span>
+          <span data-i18n="minutes">min</span>
         </div>
       </div>
       <div class="control-actions">
         <p id="refresh-note" class="refresh-note">Updates automatically every minute.</p>
         <button id="refresh-button" type="button" class="refresh-button">
-          <span aria-hidden="true">↻</span> Refresh
+          <span aria-hidden="true">↻</span>
+          <span data-i18n="refresh">Refresh</span>
         </button>
       </div>
     </section>
@@ -61,12 +70,12 @@
     <section class="results-section" aria-labelledby="results-heading" aria-live="polite">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Catchable options</p>
-          <h2 id="results-heading">Next departures</h2>
+          <p class="eyebrow" data-i18n="catchableOptions">Catchable options</p>
+          <h2 id="results-heading" data-i18n="nextDepartures">Next departures</h2>
         </div>
         <div id="feed-status" class="feed-status">Loading schedule…</div>
       </div>
-      <p id="performance-status" class="performance-status" aria-live="polite">Measuring page and API response time…</p>
+      <p id="performance-status" class="performance-status" aria-live="polite" hidden>Measuring page and API response time…</p>
       <div id="notices" class="notices" hidden></div>
       <div id="results" class="results-list">
         <div class="loading-card card" role="status">Loading the next two options…</div>
@@ -75,7 +84,7 @@
 
     <footer class="site-footer">
       <p>Transit data: <a href="https://translink.com.au/about-translink/open-data" target="_blank" rel="noreferrer">Translink Open Data</a> · Licensed under CC BY 4.0.</p>
-      <p>Times are estimates. Check official service information before travelling.</p>
+      <p data-i18n="disclaimer">Times are estimates. Check official service information before travelling.</p>
     </footer>
   </main>
 </body>
