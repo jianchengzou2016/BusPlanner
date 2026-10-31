@@ -46,6 +46,9 @@ button, input, select { font: inherit; }
 .connection-state[data-state="error"] { color: var(--red); }
 
 .intro { padding: 34px 0 22px; }
+.journey-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.return-journey-link { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--green); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.return-journey-link:hover { background: var(--mint); }
 .eyebrow { margin: 0 0 7px; color: var(--green); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 h1 { margin: 0; font-size: clamp(1.8rem, 7vw, 2.5rem); letter-spacing: -.04em; line-height: 1.08; }
 .subtitle { margin: 10px 0 0; color: var(--muted); }

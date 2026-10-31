@@ -9,6 +9,7 @@ const noticeElement = document.querySelector("#notices");
 const feedStatusElement = document.querySelector("#feed-status");
 const connectionState = document.querySelector("#connection-state");
 const titleElement = document.querySelector("#journey-title");
+const returnJourneyLink = document.querySelector("#return-journey-link");
 const subtitleElement = document.querySelector("#journey-subtitle");
 const performanceElement = document.querySelector("#performance-status");
 const journeyKey = new URLSearchParams(window.location.search).get("journey");
@@ -131,6 +132,13 @@ function renderResults(response) {
   journeyHasTransfers = response.hasTransfers;
   syncControls();
   titleElement.textContent = response.journeyLabel || "BusPlanner";
+  if (response.returnJourneyQuickLink && response.returnJourneyLabel) {
+    returnJourneyLink.href = `/?journey=${encodeURIComponent(response.returnJourneyQuickLink)}`;
+    returnJourneyLink.textContent = response.returnJourneyLabel;
+    returnJourneyLink.hidden = false;
+  } else {
+    returnJourneyLink.hidden = true;
+  }
   subtitleElement.textContent = response.startingStage !== "origin"
     ? `Starting from ${response.startingStopName} · ${response.approachMinutes} min until ready to board`
     : `Starting from ${response.startingStopName} · ${response.approachMinutes} min to reach the stop`;

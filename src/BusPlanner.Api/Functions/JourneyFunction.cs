@@ -20,6 +20,8 @@ public sealed record JourneyResponse(
     int DefaultTransferMinutes,
     bool AlertsAvailable,
     bool HasTransfers,
+    string? ReturnJourneyQuickLink,
+    string? ReturnJourneyLabel,
     IReadOnlyList<JourneyStartingStage> AvailableStartingStages,
     JourneyTimingMetrics Timing,
     JourneyPlanResult Plan);
@@ -156,6 +158,8 @@ public sealed class JourneyFunction(
                 profile.DefaultTransferMinutes,
                 realtime.AlertsAvailable,
                 profile.Branches.Any(branch => branch.Legs.Count > 1),
+                FindReturnProfile(profile)?.QuickLink,
+                FindReturnProfile(profile)?.Label,
                 transferStopCodes.Select((stopCode, index) => new JourneyStartingStage(
                     $"transfer-{index}", schedule.Stops[schedule.ResolveStopId(stopCode)].Name)).ToArray(),
                 new JourneyTimingMetrics(
@@ -202,6 +206,13 @@ public sealed class JourneyFunction(
             || Normalize(pair.Key).Replace("Journey", string.Empty, StringComparison.OrdinalIgnoreCase)
                 .Equals(normalized, StringComparison.OrdinalIgnoreCase)
             || Normalize(pair.Value.Label).Equals(normalized, StringComparison.OrdinalIgnoreCase)).Value;
+    }
+
+    private JourneyProfileOptions? FindReturnProfile(JourneyProfileOptions profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.ReturnJourneyQuickLink)) return null;
+        return _options.Journeys.Values.FirstOrDefault(candidate =>
+            string.Equals(candidate.QuickLink, profile.ReturnJourneyQuickLink, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool TryReadMinutes(HttpRequest request, string key, int fallback, int minimum, int maximum, out int value)

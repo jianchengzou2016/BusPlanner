@@ -16,6 +16,8 @@ public sealed class JourneyProfileOptions
     public string Label { get; set; } = "Configured journey";
     /// <summary>Stable short value used in shared URLs, for example "churchie-home".</summary>
     public string QuickLink { get; set; } = string.Empty;
+    /// <summary>QuickLink of a configured reciprocal journey to offer as a header shortcut.</summary>
+    public string ReturnJourneyQuickLink { get; set; } = string.Empty;
     public string OriginStopCode { get; set; } = string.Empty;
     public string DestinationStopCode { get; set; } = string.Empty;
     public int DefaultApproachMinutes { get; set; } = 10;
