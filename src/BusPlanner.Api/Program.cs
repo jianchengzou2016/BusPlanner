@@ -46,7 +46,6 @@ var host = new HostBuilder()
             json.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
         services.AddHttpClient();
         services.AddSingleton<TransitDataService>();
-        services.AddHostedService<ScheduleWarmupService>();
     })
     .Build();
 

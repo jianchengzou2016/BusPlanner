@@ -28,7 +28,7 @@ public sealed class TransitDataService(
     private RealtimeDataResult? _cachedRealtime;
     private DateTimeOffset _realtimeFetchedAt;
 
-    public async Task<ScheduleLoadResult> GetScheduleAsync(CancellationToken cancellationToken)
+    public Task<ScheduleLoadResult> GetScheduleAsync(CancellationToken cancellationToken)
     {
         Task<ScheduleLoadResult> task;
         lock (_scheduleLock)
@@ -37,22 +37,7 @@ public sealed class TransitDataService(
             task = _scheduleTask;
         }
 
-        try
-        {
-            return await task.WaitAsync(cancellationToken);
-        }
-        catch when (task.IsFaulted)
-        {
-            lock (_scheduleLock)
-            {
-                if (ReferenceEquals(_scheduleTask, task))
-                {
-                    _scheduleTask = null;
-                }
-            }
-
-            throw;
-        }
+        return task.WaitAsync(cancellationToken);
     }
 
     public async Task<RealtimeDataResult> GetRealtimeAsync(CancellationToken cancellationToken)
