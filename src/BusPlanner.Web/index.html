@@ -47,23 +47,30 @@
       <div class="control-row">
         <label for="approach-minutes" data-i18n="approachLabel">Time until I can board</label>
         <div class="number-control">
+          <button type="button" class="minute-stepper" data-target="approach-minutes" data-change="-1" data-i18n-aria="decreaseMinute" aria-label="Decrease minutes">−</button>
           <input id="approach-minutes" name="approachMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="10">
+          <button type="button" class="minute-stepper" data-target="approach-minutes" data-change="1" data-i18n-aria="increaseMinute" aria-label="Increase minutes">+</button>
           <span data-i18n="minutes">min</span>
         </div>
       </div>
       <div id="transfer-control" class="control-row transfer-control">
         <label for="transfer-minutes" data-i18n="interchangeTime">Interchange time</label>
         <div class="number-control">
+          <button type="button" class="minute-stepper" data-target="transfer-minutes" data-change="-1" data-i18n-aria="decreaseMinute" aria-label="Decrease minutes">−</button>
           <input id="transfer-minutes" name="transferMinutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="4">
+          <button type="button" class="minute-stepper" data-target="transfer-minutes" data-change="1" data-i18n-aria="increaseMinute" aria-label="Increase minutes">+</button>
           <span data-i18n="minutes">min</span>
         </div>
       </div>
       <div class="control-actions">
         <p id="refresh-note" class="refresh-note">Updates automatically every minute.</p>
-        <button id="refresh-button" type="button" class="refresh-button">
-          <span aria-hidden="true">↻</span>
-          <span data-i18n="refresh">Refresh</span>
-        </button>
+        <div class="action-buttons">
+          <button id="zero-approach-button" type="button" class="zero-approach-button" data-i18n="setWaitZero">Set to 0 min</button>
+          <button id="refresh-button" type="button" class="refresh-button">
+            <span aria-hidden="true">↻</span>
+            <span data-i18n="refresh">Refresh</span>
+          </button>
+        </div>
       </div>
     </section>
 

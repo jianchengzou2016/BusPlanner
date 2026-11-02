@@ -3,6 +3,7 @@ const approachInput = document.querySelector("#approach-minutes");
 const transferInput = document.querySelector("#transfer-minutes");
 const transferControl = document.querySelector("#transfer-control");
 const refreshButton = document.querySelector("#refresh-button");
+const zeroApproachButton = document.querySelector("#zero-approach-button");
 const refreshNote = document.querySelector("#refresh-note");
 const resultElement = document.querySelector("#results");
 const noticeElement = document.querySelector("#notices");
@@ -28,7 +29,7 @@ const translations = {
     language: "Language", system: "System", preparing: "Preparing journey…", updating: "Updating…", updated: "Updated just now", error: "Could not update",
     eyebrow: "Your connection, at a glance", yourJourney: "Your journey", checking: "Checking the next buses and the transfer.",
     journeyAdjustments: "Journey adjustments", starting: "I’m starting", firstStop: "First stop", transferStop: "Transfer stop",
-    approachLabel: "Time until I can board", interchangeTime: "Interchange time", minutes: "min", refresh: "Refresh",
+    approachLabel: "Time until I can board", interchangeTime: "Interchange time", minutes: "min", refresh: "Refresh", setWaitZero: "Set to 0 min", decreaseMinute: "Decrease minutes", increaseMinute: "Increase minutes",
     catchableOptions: "Catchable options", nextDepartures: "Next departures", loadingSchedule: "Loading schedule…",
     measuring: "Measuring page and API response time…", loadingOptions: "Loading the next two options…", disclaimer: "Times are estimates. Check official service information before travelling.",
     refreshAuto: "The approach time counts down; results refresh every minute.", refreshTransfer: "The time to board counts down while this page is open.",
@@ -49,7 +50,7 @@ const translations = {
     language: "语言", system: "跟随设备", preparing: "正在准备行程…", updating: "正在更新…", updated: "刚刚更新", error: "更新失败",
     eyebrow: "换乘信息，一目了然", yourJourney: "您的行程", checking: "正在查询下一班公交和换乘信息。",
     journeyAdjustments: "行程设置", starting: "我从这里出发", firstStop: "起点站", transferStop: "换乘站",
-    approachLabel: "需多长时间到达车站", interchangeTime: "换乘预留时间", minutes: "分钟", refresh: "刷新",
+    approachLabel: "需多长时间到达车站", interchangeTime: "换乘预留时间", minutes: "分钟", refresh: "刷新", setWaitZero: "设为0分钟", decreaseMinute: "减少分钟数", increaseMinute: "增加分钟数",
     catchableOptions: "可赶上的班次", nextDepartures: "下一班公交", loadingSchedule: "正在加载时刻表…",
     measuring: "正在计算页面和接口响应时间…", loadingOptions: "正在查询接下来两班车…", disclaimer: "时间为估算值。出行前请查看官方服务信息。",
     refreshAuto: "到站时间会倒计时；结果每分钟自动更新。", refreshTransfer: "页面打开期间，可上车时间会倒计时。",
@@ -409,6 +410,23 @@ approachInput.addEventListener("input", () => {
 });
 approachInput.addEventListener("change", refreshJourney);
 transferInput.addEventListener("change", refreshJourney);
+zeroApproachButton.addEventListener("click", () => {
+  approachBaseMinutes = 0;
+  approachSetAt = Date.now();
+  approachInput.value = "0";
+  refreshJourney();
+});
+document.querySelectorAll(".minute-stepper").forEach(button => {
+  button.addEventListener("click", () => {
+    const input = document.getElementById(button.dataset.target);
+    const current = Number.parseInt(input.value, 10) || 0;
+    const min = Number.parseInt(input.min, 10) || 0;
+    const max = Number.parseInt(input.max, 10) || 120;
+    input.value = String(Math.max(min, Math.min(max, current + Number(button.dataset.change))));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+});
 refreshButton.addEventListener("click", refreshJourney);
 languageSelect.value = urlLanguage || savedLanguage || "system";
 languageSelect.addEventListener("change", chooseLanguage);

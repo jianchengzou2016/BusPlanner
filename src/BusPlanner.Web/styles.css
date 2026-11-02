@@ -63,11 +63,19 @@ h1 { margin: 0; font-size: clamp(1.8rem, 7vw, 2.5rem); letter-spacing: -.04em; l
 .control-row label { font-size: .9rem; font-weight: 650; }
 select, .number-control { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); }
 select { width: min(58%, 330px); padding: 0 30px 0 10px; }
-.number-control { display: flex; align-items: center; padding: 0 10px; gap: 6px; }
-.number-control input { width: 46px; border: 0; outline: 0; background: transparent; color: var(--ink); text-align: right; }
+.number-control { display: flex; align-items: center; padding: 3px 6px; gap: 3px; }
+.number-control input { width: 38px; border: 0; outline: 0; background: transparent; color: var(--ink); text-align: center; }
+.minute-stepper { display: grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: var(--mint); color: var(--green-dark); cursor: pointer; font-size: 1.25rem; font-weight: 700; touch-action: manipulation; }
+.minute-stepper:hover { background: #d2e9df; }
+.minute-stepper:active { background: #c1dfd2; }
+.minute-stepper:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 .number-control span { color: var(--muted); font-size: .86rem; }
 .control-actions { justify-content: space-between; gap: 10px; padding: 13px 0 7px; }
+.action-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .refresh-note { margin: 0; color: var(--muted); font-size: .78rem; }
+.zero-approach-button { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--green-dark); cursor: pointer; font-size: .82rem; font-weight: 700; touch-action: manipulation; }
+.zero-approach-button:hover { background: var(--mint); }
+.zero-approach-button:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 .refresh-button { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--green); color: white; cursor: pointer; font-weight: 700; }
 .refresh-button:hover { background: var(--green-dark); }
 .refresh-button:disabled { opacity: .65; cursor: wait; }
